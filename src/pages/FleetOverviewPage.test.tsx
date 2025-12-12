@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { FleetOverviewPage } from "./FleetOverviewPage";
 import type { Robot } from "../types/robot";
@@ -12,7 +12,7 @@ const mockRobots: Robot[] =[
         battery: 85,
         location: "Lab A",
         lastHeartbeat: "2024-06-01T12:00:00Z",
-        currentTaskId: "Patrol Area 1",
+        currentTask: "Patrol Area 1",
     },
     {
         id: "rbt-002",
@@ -21,7 +21,7 @@ const mockRobots: Robot[] =[
         battery: 45,
         location: "Charging Station 3",
         lastHeartbeat: "2024-06-01T11:58:00Z",
-        currentTaskId: "Awaiting Assignment",
+        currentTask: "Awaiting Assignment",
     }
 ];
 

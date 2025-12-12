@@ -7,5 +7,5 @@ export interface Robot {
     battery: number; // percentage from 0 to 100
     location: string
     lastHeartbeat: string;
-    currentTaskId?: string;
+    currentTask?: string;
 }
