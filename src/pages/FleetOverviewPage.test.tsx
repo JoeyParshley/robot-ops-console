@@ -92,4 +92,55 @@ describe("FleetOverviewPage", () => {
         fireEvent.click(screen.getByText("RoboOne").closest("tr")!);
         expect(handleRobotSelected).toHaveBeenCalledWith("rbt-001");
     });
+
+    // it calls onRobotSelected with correct robot ID when clicking first robot row
+    it("calls onRobotSelected with correct robot ID when clicking first robot row", () => {
+        const handleRobotSelected = vi.fn();
+        render(
+            <FleetOverviewPage robots={mockRobots} onRobotSelected={handleRobotSelected} />
+        );
+
+        const firstRow = screen.getByText(/roboone/i).closest("tr");
+        fireEvent.click(firstRow!);
+        
+        expect(handleRobotSelected).toHaveBeenCalledTimes(1);
+        expect(handleRobotSelected).toHaveBeenCalledWith("rbt-001");
+    });
+
+    it("calls onRobotSelected with correct robot ID when clicking second robot row", () => {
+        const handleRobotSelected = vi.fn();
+        render(
+            <FleetOverviewPage robots={mockRobots} onRobotSelected={handleRobotSelected} />
+        );
+
+        const secondRow = screen.getByText(/robotwo/i).closest("tr");
+        fireEvent.click(secondRow!);
+
+        expect(handleRobotSelected).toHaveBeenCalledTimes(1);
+        expect(handleRobotSelected).toHaveBeenCalledWith("rbt-002");
+    });
+
+    // it call onRobotSelected when clicking anywhere on the row
+    it("calls onRobotSelected when clicking anywhere on the row", () => {
+        const handleRobotSelected = vi.fn();
+        render(
+            <FleetOverviewPage robots={mockRobots} onRobotSelected={handleRobotSelected} />
+        );
+
+        // Click on different parts of the row
+        const row = screen.getByText(/roboone/i).closest("tr")!;
+        const statusCell = screen.getByText(/active/i)!;
+        const batteryCell = screen.getByText(/85%/i)!;
+        
+        fireEvent.click(row);
+        expect(handleRobotSelected).toHaveBeenCalledWith("rbt-001");
+        handleRobotSelected.mockClear();
+
+        fireEvent.click(statusCell);
+        expect(handleRobotSelected).toHaveBeenCalledWith("rbt-001");
+        handleRobotSelected.mockClear();
+
+        fireEvent.click(batteryCell);
+        expect(handleRobotSelected).toHaveBeenCalledWith("rbt-001");
+    });
 });
