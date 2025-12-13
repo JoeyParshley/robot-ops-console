@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Paper,
     Typography,
@@ -15,7 +16,7 @@ import type { Robot } from "../types/robot";
 
 interface FleetOverviewPageProps {
     robots: Robot[];
-    onRobotSelected: (robotId: string) => void;
+    // Removed: onRobotSelected: (robotId: string) => void;
 }
 
 const getStatusChipColor = (status: Robot["status"]) => {
@@ -35,8 +36,9 @@ const getStatusChipColor = (status: Robot["status"]) => {
 
 export const FleetOverviewPage = ({
     robots,
-    onRobotSelected,
 }: FleetOverviewPageProps) => {
+    const navigate = useNavigate();
+
     return (
         <Paper elevation={3} sx={{ p: 2 }}>
             <Typography variant="h5" gutterBottom>Fleet Overview</Typography>
@@ -61,7 +63,7 @@ export const FleetOverviewPage = ({
                             key={robot.id}
                             hover
                             sx={{ cursor: "pointer" }}
-                            onClick={() => onRobotSelected(robot.id)}
+                            onClick={() => navigate(`/robots/${robot.id}`)}
                         >
                             <TableCell>{robot.name}</TableCell>
                             <TableCell>
