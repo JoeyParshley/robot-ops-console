@@ -1,73 +1,97 @@
-# React + TypeScript + Vite
+# Robot Ops Console (Proof of Concept)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React + TypeScript proof-of-concept exploring UI patterns for robotics operator dashboards — including fleet monitoring, robot status visualization, and control interfaces.  
+This POC was built using **test-driven development (TDD)** and inspired by the challenges of designing clear, reliable UIs for **Alert Venture Foundry**–style zero-to-one robotics products.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Project Overview
 
-## React Compiler
+The **Robot Ops Console** demonstrates early ideas for a monitoring and control interface for a small fleet of robots.  
+The goals of this POC are to explore:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Real-time, data-driven UI architecture  
+- Operator-focused workflows and clarity  
+- Navigation between fleet-level and per-robot detail views  
+- UI patterns suitable for **local desktop deployment** (Electron) or web environments  
 
-## Expanding the ESLint configuration
+All data is currently mocked; live telemetry and desktop deployment are planned next.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🎯 Motivation & Context
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+This project blends my background in **R&D mechanical engineering at Velcro**—where I worked with real-time UIs for monitoring temperatures, pressures, and plastic hook processing—with my passion for building **human-centered software interfaces**.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Working with industrial operator consoles is what originally sparked my interest in UI design: their clarity, or lack thereof, had direct impact on process quality, safety, and decision-making.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+This POC mirrors the interface challenges present in early-stage robotics environments:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- Telemetry visualization  
+- Operator safety and workflow  
+- Diagnostics and control panels  
+- Rapid iteration under uncertainty  
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+It also serves as preparation for the **Frontend Software Engineer (Web & Local UI)** role at **Alert Venture Foundry**.
+
+---
+
+## 🧰 Tech Stack
+
+### **Core Technologies**
+- React + TypeScript (Vite)
+- MUI (Material UI)
+- React Router v7
+- Vitest + React Testing Library (TDD)
+- JSDOM test environment
+
+### **Planned Enhancements**
+- Node/WebSocket telemetry simulator  
+- `useTelemetry(robotId)` streaming hook  
+- Electron-based local deployment  
+- Diagnostics dashboard (health, alerts, logs)
+
+---
+
+## 📦 Features (Current POC)
+
+### **Fleet Overview**
+- Table of robots with:
+  - Status  
+  - Battery  
+  - Location  
+  - Last heartbeat  
+  - Current task  
+- Clicking a row navigates to that robot’s detail page
+
+### **Robot Detail**
+- Status & health summary  
+- Battery, last heartbeat, active task  
+- Stubbed operator controls:
+  - Start  
+  - Pause  
+  - Resume  
+  - Return to Dock  
+  - Emergency Stop  
+
+_All data is mocked for this early POC._
+
+---
+
+## 🧪 Test-Driven Development (TDD)
+
+Key UI components were developed test-first.
+
+Current test coverage includes:
+
+- Rendering of the fleet overview  
+- Click-through navigation to detail pages  
+- Robot detail rendering from URL route  
+- Handling of invalid robot IDs  
+- Navigation behavior  
+
+Run tests with:
+
+```bash
+npm run test
+npm run test:watch
