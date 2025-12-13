@@ -9,6 +9,20 @@ export const mockRobots: Robot[] = [
         location: 'Lab A',
         lastHeartbeat: '2025-12-11T15:23:10Z',
         currentTask: 'Patrol Route A',
+        tether: {
+            isTethered: true,
+            tetherLength: 50,
+            anchorPoint: { x: 0, y: 0, z: 0 },
+            currentTetherExtension: 32.5,
+        },
+        flightArea: {
+            minX: -25,
+            maxX: 25,
+            minY: -25,
+            maxY: 25,
+            minZ: 0,
+            maxZ: 15,
+        },
     },
     {
         id: 'rbt-002',
@@ -18,6 +32,20 @@ export const mockRobots: Robot[] = [
         location: 'Charging Station 1',
         lastHeartbeat: '2025-12-11T15:23:10Z',
         currentTask: 'Charging',
+        tether: {
+            isTethered: true,
+            tetherLength: 40,
+            anchorPoint: { x: 10, y: 5, z: 0 },
+            currentTetherExtension: 5.2,
+        },
+        flightArea: {
+            minX: -20,
+            maxX: 20,
+            minY: -20,
+            maxY: 20,
+            minZ: 0,
+            maxZ: 12,
+        },
     },
     {
         id: 'rbt-003',
@@ -26,6 +54,20 @@ export const mockRobots: Robot[] = [
         battery: 89,
         location: 'Warehouse B',
         lastHeartbeat: '2025-12-11T15:23:10Z',
+        tether: {
+            isTethered: true,
+            tetherLength: 60,
+            anchorPoint: { x: -15, y: 10, z: 0 },
+            currentTetherExtension: 18.7,
+        },
+        flightArea: {
+            minX: -30,
+            maxX: 30,
+            minY: -30,
+            maxY: 30,
+            minZ: 0,
+            maxZ: 20,
+        },
     },
     {
         id: 'rbt-004',
@@ -35,5 +77,19 @@ export const mockRobots: Robot[] = [
         location: 'Sector 7G',
         lastHeartbeat: '2025-12-11T15:23:10Z',
         currentTask: 'Diagnostics',
+        tether: {
+            isTethered: true,
+            tetherLength: 35,
+            anchorPoint: { x: 5, y: -8, z: 0 },
+            currentTetherExtension: 35, // at max extension
+        },
+        flightArea: {
+            minX: -15,
+            maxX: 15,
+            minY: -15,
+            maxY: 15,
+            minZ: 0,
+            maxZ: 10,
+        },
     }
 ];

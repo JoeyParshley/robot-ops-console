@@ -49,6 +49,8 @@ export const FleetOverviewPage: React.FC<FleetOverviewPageProps> = ({
                         <TableCell>Status</TableCell>
                         <TableCell>Battery</TableCell>
                         <TableCell>Location</TableCell>
+                        <TableCell>Tether</TableCell>
+                        <TableCell>Flight Area</TableCell>
                         <TableCell>Last Heartbeat</TableCell>
                         <TableCell>Current Task</TableCell>
                     </TableRow>
@@ -83,6 +85,25 @@ export const FleetOverviewPage: React.FC<FleetOverviewPageProps> = ({
                                 </Box>
                             </TableCell>
                             <TableCell>{robot.location}</TableCell>
+                            <TableCell>
+                                {robot.tether.isTethered ? (
+                                    <Box>
+                                        <Typography variant="body2">
+                                            {robot.tether.currentTetherExtension.toFixed(1)}m / {robot.tether.tetherLength}m
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Anchor: ({robot.tether.anchorPoint.x}, {robot.tether.anchorPoint.y}, {robot.tether.anchorPoint.z})
+                                        </Typography>
+                                    </Box>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary">Untethered</Typography>
+                                )}
+                            </TableCell>
+                            <TableCell>
+                                <Typography variant="body2">
+                                    {robot.flightArea.minX} to {robot.flightArea.maxX} × {robot.flightArea.minY} to {robot.flightArea.maxY} × {robot.flightArea.minZ} to {robot.flightArea.maxZ}m
+                                </Typography>
+                            </TableCell>
                             <TableCell>{new Date(robot.lastHeartbeat).toLocaleTimeString()}</TableCell>
                             <TableCell>{robot.currentTask ?? "__"}</TableCell>
                         </TableRow>
