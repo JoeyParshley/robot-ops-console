@@ -33,10 +33,10 @@ const getStatusChipColor = (status: Robot["status"]) => {
     }
 };
 
-export const FleetOverviewPage: React.FC<FleetOverviewPageProps> = ({
+export const FleetOverviewPage = ({
     robots,
     onRobotSelected,
-}) => {
+}: FleetOverviewPageProps) => {
     return (
         <Paper elevation={3} sx={{ p: 2 }}>
             <Typography variant="h5" gutterBottom>Fleet Overview</Typography>
