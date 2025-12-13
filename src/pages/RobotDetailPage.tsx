@@ -13,9 +13,19 @@ import {
     TableHead,
     TableRow,
     Card,
-    CardContent
+    CardContent,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions,
+    Snackbar,
+    Alert,
+    CircularProgress
 } from '@mui/material';
 import type { RobotDetail } from '../types/robot';
+import { useRobotControls } from '../hooks/useRobotControls';
+import { useRobotState } from '../context/RobotStateContext';
 
 interface RobotDetailPageProps {
     robots: RobotDetail[];
@@ -69,13 +79,48 @@ const formatDateTime = (dateString: string): string => {
 };
 
 export const RobotDetailPage = ({
-    robots,
+    robots: robotsProp,
 }: RobotDetailPageProps) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
+    // Try to use context, fallback to props
+    let robots: RobotDetail[];
+    let updateRobotStatus: ((robotId: string, newStatus: any) => void) | undefined;
+    
+    try {
+        const context = useRobotState();
+        robots = context.robots;
+        updateRobotStatus = context.updateRobotStatus;
+    } catch {
+        // Context not available, use props
+        robots = robotsProp;
+    }
+
     // Find robot by ID
-    const robot = robots.find(r => r.id === id);
+    const foundRobot = robots.find(r => r.id === id);
+
+    // Use custom hook for robot controls
+    const {
+        robotStatus,
+        loading,
+        snackbar,
+        confirmDialog,
+        handlers,
+        closeSnackbar,
+        closeConfirmDialog,
+    } = useRobotControls({
+        robotId: id || '',
+        initialStatus: foundRobot?.status || 'idle',
+        onStatusChange: (newStatus) => {
+            if (updateRobotStatus && id) {
+                updateRobotStatus(id, newStatus);
+            }
+        },
+    });
+
+    // Create robot with current status
+    const robot = foundRobot ? { ...foundRobot, status: robotStatus } : null;
 
     // Handle invalid robot ID
     if (!robot) {
@@ -102,14 +147,14 @@ export const RobotDetailPage = ({
         <Box>
             <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
-                    <Button variant="outlined" color="primary" onClick={() => navigate('/')}>
-                        Back
-                    </Button>
+                <Button variant="outlined" color="primary" onClick={() => navigate('/')}>
+                    Back
+                </Button>
                     <Typography variant="h4">{robot.name}</Typography>
-                    <Chip 
-                        label={robot.status.toUpperCase()} 
-                        color={getStatusChipColor(robot.status) as any} 
-                    />
+                <Chip 
+                    label={robot.status.toUpperCase()} 
+                    color={getStatusChipColor(robot.status) as any} 
+                />
                 </Box>
 
                 {/* Operator Controls */}
@@ -127,63 +172,50 @@ export const RobotDetailPage = ({
                                 <Button
                                     variant="contained"
                                     color="primary"
-                                    disabled={robot.status !== 'idle'}
-                                    onClick={() => {
-                                        // TODO: Implement start command
-                                        console.log(`Starting robot ${robot.id}`);
-                                    }}
+                                    disabled={robot.status !== 'idle' || loading !== null}
+                                    onClick={handlers.handleStart}
+                                    startIcon={loading === 'Start' ? <CircularProgress size={16} color="inherit" /> : null}
                                     sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
                                 >
-                                    Start
+                                    {loading === 'Start' ? 'Starting...' : 'Start'}
                                 </Button>
                                 <Button
                                     variant="contained"
                                     color="primary"
-                                    disabled={robot.status !== 'active'}
-                                    onClick={() => {
-                                        // TODO: Implement pause command
-                                        console.log(`Pausing robot ${robot.id}`);
-                                    }}
+                                    disabled={robot.status !== 'active' || loading !== null}
+                                    onClick={handlers.handlePause}
+                                    startIcon={loading === 'Pause' ? <CircularProgress size={16} color="inherit" /> : null}
                                     sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
                                 >
-                                    Pause
+                                    {loading === 'Pause' ? 'Pausing...' : 'Pause'}
                                 </Button>
                                 <Button
                                     variant="contained"
                                     color="primary"
-                                    disabled={robot.status !== 'idle'}
-                                    onClick={() => {
-                                        // TODO: Implement resume command
-                                        console.log(`Resuming robot ${robot.id}`);
-                                    }}
+                                    disabled={robot.status !== 'idle' || loading !== null}
+                                    onClick={handlers.handleResume}
+                                    startIcon={loading === 'Resume' ? <CircularProgress size={16} color="inherit" /> : null}
                                     sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
                                 >
-                                    Resume
+                                    {loading === 'Resume' ? 'Resuming...' : 'Resume'}
                                 </Button>
                                 <Button
                                     variant="contained"
                                     color="info"
-                                    disabled={robot.status === 'charging' || robot.status === 'error'}
-                                    onClick={() => {
-                                        // TODO: Implement return to dock command
-                                        console.log(`Returning robot ${robot.id} to dock`);
-                                    }}
+                                    disabled={robot.status === 'charging' || robot.status === 'error' || loading !== null}
+                                    onClick={handlers.handleReturnToDock}
+                                    startIcon={loading === 'Return to Dock' ? <CircularProgress size={16} color="inherit" /> : null}
                                     sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
                                 >
-                                    Return to Dock
+                                    {loading === 'Return to Dock' ? 'Returning...' : 'Return to Dock'}
                                 </Button>
                                 <Button
                                     variant="contained"
                                     color="error"
                                     size="large"
-                                    disabled={robot.status === 'error'}
-                                    onClick={() => {
-                                        // TODO: Implement emergency stop command
-                                        console.log(`EMERGENCY STOP for robot ${robot.id}`);
-                                        if (window.confirm('Are you sure you want to execute an emergency stop?')) {
-                                            // Emergency stop confirmed
-                                        }
-                                    }}
+                                    disabled={robot.status === 'error' || loading !== null}
+                                    onClick={handlers.handleEmergencyStop}
+                                    startIcon={loading === 'Emergency Stop' ? <CircularProgress size={16} color="inherit" /> : null}
                                     sx={{
                                         fontWeight: 'bold',
                                         minWidth: { xs: '100%', sm: 180 },
@@ -201,7 +233,7 @@ export const RobotDetailPage = ({
                                         },
                                     }}
                                 >
-                                    Emergency Stop
+                                    {loading === 'Emergency Stop' ? 'Stopping...' : 'Emergency Stop'}
                                 </Button>
                             </Box>
                         </CardContent>
@@ -246,15 +278,15 @@ export const RobotDetailPage = ({
                                 <Typography variant="h6" gutterBottom>Battery & Performance</Typography>
                                 <Box sx={{ mb: 2 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                        <LinearProgress 
-                                            variant="determinate" 
-                                            value={robot.battery}
+                    <LinearProgress 
+                        variant="determinate" 
+                        value={robot.battery} 
                                             sx={{ flexGrow: 1, height: 10, borderRadius: 5 }}
-                                        />
+                    />
                                         <Typography variant="body2" sx={{ minWidth: 50 }}>
-                                            {robot.battery.toFixed(0)}%
-                                        </Typography>
-                                    </Box>
+                        {robot.battery.toFixed(0)}%
+                    </Typography>
+                </Box>
                                 </Box>
                                 <Typography variant="body2" color="text.secondary">
                                     <strong>Uptime:</strong> {formatDuration(robot.metrics.uptime)}
@@ -496,8 +528,54 @@ export const RobotDetailPage = ({
                             </Card>
                         </Box>
                     )}
-                </Box>
-            </Paper>
+            </Box>
+        </Paper>
+
+            {/* Confirmation Dialog */}
+            <Dialog
+                open={confirmDialog.open}
+                onClose={closeConfirmDialog}
+                aria-labelledby="confirm-dialog-title"
+                aria-describedby="confirm-dialog-description"
+            >
+                <DialogTitle id="confirm-dialog-title">
+                    {confirmDialog.title}
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="confirm-dialog-description">
+                        {confirmDialog.message}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={closeConfirmDialog} color="inherit">
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={confirmDialog.action} 
+                        color={confirmDialog.title === 'Emergency Stop' ? 'error' : 'primary'}
+                        variant="contained"
+                        autoFocus
+                    >
+                        Confirm
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Success/Error Feedback Snackbar */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={closeSnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert 
+                    onClose={closeSnackbar} 
+                    severity={snackbar.severity} 
+                    sx={{ width: '100%' }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };
