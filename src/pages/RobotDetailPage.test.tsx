@@ -1,7 +1,7 @@
 // mockDetail: RobotDetail
 import { describe, expect, it, vi } from 'vitest';
 import type { RobotDetail } from '../types/robot';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { RobotDetailPage } from './RobotDetailPage';
 
 const mockRobotDetail: RobotDetail = {
@@ -88,5 +88,84 @@ describe("RobotDetailPage", () => {
         expect(screen.getByText("Atlas-01")).toBeInTheDocument();
         expect(screen.getByText(/rbt-001/)).toBeInTheDocument();
         expect(screen.getByText(/Lab A/)).toBeInTheDocument();
+    });
+
+    it("displays robot status chip", () => {
+        render(<RobotDetailPage robot={mockRobotDetail} onBack={vi.fn()} />);
+        expect(screen.getByText(/ACTIVE/i)).toBeInTheDocument();
+    });
+
+    it("displays the battery level with percentage", () => {
+        render(<RobotDetailPage robot={mockRobotDetail} onBack={vi.fn()} />);
+        expect(screen.getByText(/76%/i)).toBeInTheDocument();
+    });
+
+    it("calls onBack when the back button is clicked", () => {
+        const handleBack = vi.fn();
+        render(<RobotDetailPage robot={mockRobotDetail} onBack={handleBack} />);
+        const backButton = screen.getByRole("button", { name: "Back" });
+        fireEvent.click(backButton);
+
+        expect(handleBack).toHaveBeenCalled();
+    });
+
+    it("displays the status chip for idle status", () => {
+        const idleRobot = {
+            ...mockRobotDetail,
+            status: "idle" as const,
+        };
+        render(<RobotDetailPage robot={idleRobot} onBack={vi.fn()} />);
+        expect(screen.getByText(/IDLE/i)).toBeInTheDocument();
+    });
+
+    it("displays the status chip for charging status", () => {
+        const chargingRobot = {
+            ...mockRobotDetail,
+            status: "charging" as const,
+        };
+        render(<RobotDetailPage robot={chargingRobot} onBack={vi.fn()} />);
+        expect(screen.getByText(/CHARGING/i)).toBeInTheDocument();
+    });
+
+    it("displays the status chip for error status", () => {
+        const errorRobot = {
+            ...mockRobotDetail,
+            status: "error" as const,
+        };
+        render(<RobotDetailPage robot={errorRobot} onBack={vi.fn()} />);
+        expect(screen.getByText(/ERROR/i)).toBeInTheDocument();
+    });
+
+    it("displays battery level for different percentages", () => {
+        const lowBateryRobot = {
+            ...mockRobotDetail,
+            battery: 15 as const,
+        }
+        render(<RobotDetailPage robot={lowBateryRobot} onBack={vi.fn()} />);
+        expect(screen.getByText(/15%/i)).toBeInTheDocument();
+
+        const mediumBateryRobot = {
+            ...mockRobotDetail,
+            battery: 50 as const,
+        }
+        render(<RobotDetailPage robot={mediumBateryRobot} onBack={vi.fn()} />);
+        expect(screen.getByText(/50%/i)).toBeInTheDocument();
+
+        const highBateryRobot = {
+            ...mockRobotDetail,
+            battery: 90 as const,
+        }
+        render(<RobotDetailPage robot={highBateryRobot} onBack={vi.fn()} />);
+        expect(screen.getByText(/90%/i)).toBeInTheDocument();
+    });
+
+    it("renders all required elements", () => {
+        render(<RobotDetailPage robot={mockRobotDetail} onBack={vi.fn()} />);
+        expect(screen.getByText("Atlas-01")).toBeInTheDocument();
+        expect(screen.getByText(/rbt-001/)).toBeInTheDocument();
+        expect(screen.getByText(/Lab A/)).toBeInTheDocument();
+        expect(screen.getByText(/ACTIVE/i)).toBeInTheDocument();
+        expect(screen.getByText(/76%/i)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
     });
 });
