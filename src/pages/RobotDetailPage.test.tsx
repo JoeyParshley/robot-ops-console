@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import type { RobotDetail } from '../types/robot';
+import { describe, expect, it, vi } from 'vitest';
+import type { RobotDetail, Robot } from '../types/robot';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { RobotDetailPage } from './RobotDetailPage';
+import { FleetOverviewPage } from './FleetOverviewPage';
 
 // Create a mock RobotDetail that extends Robot
 const mockRobotDetail: RobotDetail = {
@@ -84,6 +85,21 @@ const mockRobotDetail: RobotDetail = {
 };
 
 const mockRobots: RobotDetail[] = [mockRobotDetail];
+
+// Create Robot[] version for FleetOverviewPage tests
+const mockRobotsBasic: Robot[] = [
+    {
+        id: mockRobotDetail.id,
+        name: mockRobotDetail.name,
+        status: mockRobotDetail.status,
+        battery: mockRobotDetail.battery,
+        location: mockRobotDetail.location,
+        lastHeartbeat: mockRobotDetail.lastHeartbeat,
+        currentTask: mockRobotDetail.currentTask,
+        tether: mockRobotDetail.tether,
+        flightArea: mockRobotDetail.flightArea,
+    },
+];
 
 // Helper function to create router with RobotDetailPage
 const createRouterWithRobots = (path: string, robots: RobotDetail[]) => {
@@ -296,6 +312,18 @@ describe("RobotDetailPage", () => {
         expect(patrolRouteTexts.length).toBeGreaterThan(0);
     });
 
+    it("displays task history with correct status indicators", () => {
+        const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+        render(<RouterProvider router={router} />);
+        
+        // Check for status chips in task history
+        const completedChips = screen.getAllByText(/COMPLETED/i);
+        expect(completedChips.length).toBeGreaterThan(0);
+        
+        const inProgressChips = screen.getAllByText(/IN PROGRESS/i);
+        expect(inProgressChips.length).toBeGreaterThan(0);
+    });
+
     it("displays error logs table when errors exist", () => {
         const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
         render(<RouterProvider router={router} />);
@@ -303,6 +331,51 @@ describe("RobotDetailPage", () => {
         expect(screen.getByText(/Error Logs/i)).toBeInTheDocument();
         expect(screen.getByText(/ERR-001/i)).toBeInTheDocument();
         expect(screen.getByText(/Battery level below threshold/i)).toBeInTheDocument();
+    });
+
+    it("displays error logs with severity indicators", () => {
+        const robotWithMultipleErrors: RobotDetail = {
+            ...mockRobotDetail,
+            errorLogs: [
+                {
+                    errorCode: "WRN-001",
+                    message: "Warning message",
+                    timestamp: "2025-12-11T13:00:00Z",
+                    severity: "warning",
+                    resolved: false,
+                },
+                {
+                    errorCode: "ERR-002",
+                    message: "Error message",
+                    timestamp: "2025-12-11T14:00:00Z",
+                    severity: "error",
+                    resolved: true,
+                },
+                {
+                    errorCode: "CRT-001",
+                    message: "Critical message",
+                    timestamp: "2025-12-11T15:00:00Z",
+                    severity: "critical",
+                    resolved: false,
+                },
+            ],
+        };
+        const router = createRouterWithRobots("/robots/rbt-001", [robotWithMultipleErrors]);
+        render(<RouterProvider router={router} />);
+        
+        // Check for severity chips (may appear multiple times, so use getAllByText)
+        const warningChips = screen.getAllByText(/WARNING/i);
+        expect(warningChips.length).toBeGreaterThan(0);
+        const errorChips = screen.getAllByText(/ERROR/i);
+        expect(errorChips.length).toBeGreaterThan(0);
+        const criticalChips = screen.getAllByText(/CRITICAL/i);
+        expect(criticalChips.length).toBeGreaterThan(0);
+        
+        // Check for resolved status
+        const resolvedChips = screen.getAllByText(/Yes/i);
+        const unresolvedChips = screen.getAllByText(/No/i);
+        expect(resolvedChips.length).toBeGreaterThan(0);
+        expect(unresolvedChips.length).toBeGreaterThan(0);
     });
 
     it("does not display error logs section when no errors exist", () => {
@@ -333,6 +406,18 @@ describe("RobotDetailPage", () => {
         
         expect(screen.getByText(/Battery Efficiency/i)).toBeInTheDocument();
         expect(screen.getByText(/85\.5%/i)).toBeInTheDocument();
+    });
+
+    it("displays all performance metrics correctly", () => {
+        const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+        render(<RouterProvider router={router} />);
+        
+        // Check all performance metrics are displayed
+        expect(screen.getByText(/Uptime/i)).toBeInTheDocument();
+        expect(screen.getByText(/Total Flight Time/i)).toBeInTheDocument();
+        expect(screen.getByText(/Tasks Completed/i)).toBeInTheDocument();
+        expect(screen.getByText(/Tasks Failed/i)).toBeInTheDocument();
+        expect(screen.getByText(/Battery Efficiency/i)).toBeInTheDocument();
     });
 
     it("displays maintenance dates", () => {
@@ -367,5 +452,650 @@ describe("RobotDetailPage", () => {
         // "Patrol Route A" appears in Current Task and Task History, so check it's in Current Task section
         const currentTaskLabel = screen.getByText(/Current Task:/i);
         expect(currentTaskLabel.closest('p')?.textContent).toContain('Patrol Route A');
+    });
+
+    describe("Operator Controls", () => {
+        it("renders all operator control buttons", () => {
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            expect(screen.getByText(/Operator Controls/i)).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Start" })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Resume" })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Return to Dock" })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Emergency Stop" })).toBeInTheDocument();
+        });
+
+        it("enables Start button when robot is idle", () => {
+            const idleRobot: RobotDetail = {
+                ...mockRobotDetail,
+                status: "idle" as const,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [idleRobot]);
+            render(<RouterProvider router={router} />);
+            
+            const startButton = screen.getByRole("button", { name: "Start" });
+            expect(startButton).not.toBeDisabled();
+        });
+
+        it("disables Start button when robot is not idle", () => {
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            const startButton = screen.getByRole("button", { name: "Start" });
+            expect(startButton).toBeDisabled();
+        });
+
+        it("enables Pause button when robot is active", () => {
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            const pauseButton = screen.getByRole("button", { name: "Pause" });
+            expect(pauseButton).not.toBeDisabled();
+        });
+
+        it("disables Pause button when robot is not active", () => {
+            const idleRobot: RobotDetail = {
+                ...mockRobotDetail,
+                status: "idle" as const,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [idleRobot]);
+            render(<RouterProvider router={router} />);
+            
+            const pauseButton = screen.getByRole("button", { name: "Pause" });
+            expect(pauseButton).toBeDisabled();
+        });
+
+        it("enables Resume button when robot is idle", () => {
+            const idleRobot: RobotDetail = {
+                ...mockRobotDetail,
+                status: "idle" as const,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [idleRobot]);
+            render(<RouterProvider router={router} />);
+            
+            const resumeButton = screen.getByRole("button", { name: "Resume" });
+            expect(resumeButton).not.toBeDisabled();
+        });
+
+        it("disables Resume button when robot is not idle", () => {
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            const resumeButton = screen.getByRole("button", { name: "Resume" });
+            expect(resumeButton).toBeDisabled();
+        });
+
+        it("enables Return to Dock button when robot is active", () => {
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            const returnToDockButton = screen.getByRole("button", { name: "Return to Dock" });
+            expect(returnToDockButton).not.toBeDisabled();
+        });
+
+        it("enables Return to Dock button when robot is idle", () => {
+            const idleRobot: RobotDetail = {
+                ...mockRobotDetail,
+                status: "idle" as const,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [idleRobot]);
+            render(<RouterProvider router={router} />);
+            
+            const returnToDockButton = screen.getByRole("button", { name: "Return to Dock" });
+            expect(returnToDockButton).not.toBeDisabled();
+        });
+
+        it("disables Return to Dock button when robot is charging", () => {
+            const chargingRobot: RobotDetail = {
+                ...mockRobotDetail,
+                status: "charging" as const,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [chargingRobot]);
+            render(<RouterProvider router={router} />);
+            
+            const returnToDockButton = screen.getByRole("button", { name: "Return to Dock" });
+            expect(returnToDockButton).toBeDisabled();
+        });
+
+        it("disables Return to Dock button when robot is in error state", () => {
+            const errorRobot: RobotDetail = {
+                ...mockRobotDetail,
+                status: "error" as const,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [errorRobot]);
+            render(<RouterProvider router={router} />);
+            
+            const returnToDockButton = screen.getByRole("button", { name: "Return to Dock" });
+            expect(returnToDockButton).toBeDisabled();
+        });
+
+        it("enables Emergency Stop button when robot is active", () => {
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            const emergencyStopButton = screen.getByRole("button", { name: "Emergency Stop" });
+            expect(emergencyStopButton).not.toBeDisabled();
+        });
+
+        it("enables Emergency Stop button when robot is idle", () => {
+            const idleRobot: RobotDetail = {
+                ...mockRobotDetail,
+                status: "idle" as const,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [idleRobot]);
+            render(<RouterProvider router={router} />);
+            
+            const emergencyStopButton = screen.getByRole("button", { name: "Emergency Stop" });
+            expect(emergencyStopButton).not.toBeDisabled();
+        });
+
+        it("enables Emergency Stop button when robot is charging", () => {
+            const chargingRobot: RobotDetail = {
+                ...mockRobotDetail,
+                status: "charging" as const,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [chargingRobot]);
+            render(<RouterProvider router={router} />);
+            
+            const emergencyStopButton = screen.getByRole("button", { name: "Emergency Stop" });
+            expect(emergencyStopButton).not.toBeDisabled();
+        });
+
+        it("disables Emergency Stop button when robot is in error state", () => {
+            const errorRobot: RobotDetail = {
+                ...mockRobotDetail,
+                status: "error" as const,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [errorRobot]);
+            render(<RouterProvider router={router} />);
+            
+            const emergencyStopButton = screen.getByRole("button", { name: "Emergency Stop" });
+            expect(emergencyStopButton).toBeDisabled();
+        });
+
+        it("calls console.log when Start button is clicked", () => {
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+            const idleRobot: RobotDetail = {
+                ...mockRobotDetail,
+                status: "idle" as const,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [idleRobot]);
+            render(<RouterProvider router={router} />);
+            
+            const startButton = screen.getByRole("button", { name: "Start" });
+            fireEvent.click(startButton);
+            
+            expect(consoleSpy).toHaveBeenCalledWith("Starting robot rbt-001");
+            consoleSpy.mockRestore();
+        });
+
+        it("calls console.log when Pause button is clicked", () => {
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            const pauseButton = screen.getByRole("button", { name: "Pause" });
+            fireEvent.click(pauseButton);
+            
+            expect(consoleSpy).toHaveBeenCalledWith("Pausing robot rbt-001");
+            consoleSpy.mockRestore();
+        });
+
+        it("calls console.log when Resume button is clicked", () => {
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+            const idleRobot: RobotDetail = {
+                ...mockRobotDetail,
+                status: "idle" as const,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [idleRobot]);
+            render(<RouterProvider router={router} />);
+            
+            const resumeButton = screen.getByRole("button", { name: "Resume" });
+            fireEvent.click(resumeButton);
+            
+            expect(consoleSpy).toHaveBeenCalledWith("Resuming robot rbt-001");
+            consoleSpy.mockRestore();
+        });
+
+        it("calls console.log when Return to Dock button is clicked", () => {
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            const returnToDockButton = screen.getByRole("button", { name: "Return to Dock" });
+            fireEvent.click(returnToDockButton);
+            
+            expect(consoleSpy).toHaveBeenCalledWith("Returning robot rbt-001 to dock");
+            consoleSpy.mockRestore();
+        });
+
+        it("shows confirmation dialog when Emergency Stop button is clicked", () => {
+            const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => true);
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            const emergencyStopButton = screen.getByRole("button", { name: "Emergency Stop" });
+            fireEvent.click(emergencyStopButton);
+            
+            expect(confirmSpy).toHaveBeenCalledWith("Are you sure you want to execute an emergency stop?");
+            expect(consoleSpy).toHaveBeenCalledWith("EMERGENCY STOP for robot rbt-001");
+            confirmSpy.mockRestore();
+            consoleSpy.mockRestore();
+        });
+
+        it("Emergency Stop button has error color styling", () => {
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            const emergencyStopButton = screen.getByRole("button", { name: "Emergency Stop" });
+            // Check that the button has the error color class (MUI applies this)
+            expect(emergencyStopButton).toHaveClass('MuiButton-colorError');
+        });
+    });
+
+    describe("Edge Cases", () => {
+        it("handles empty status history gracefully", () => {
+            const robotWithEmptyHistory: RobotDetail = {
+                ...mockRobotDetail,
+                statusHistory: [],
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [robotWithEmptyHistory]);
+            render(<RouterProvider router={router} />);
+            
+            // Status History section should still be displayed
+            expect(screen.getByText(/Status History/i)).toBeInTheDocument();
+            // Table should be empty (no status entries)
+            expect(screen.queryByText(/Initial startup/i)).not.toBeInTheDocument();
+        });
+
+        it("handles empty task history gracefully", () => {
+            const robotWithEmptyTasks: RobotDetail = {
+                ...mockRobotDetail,
+                taskHistory: [],
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [robotWithEmptyTasks]);
+            render(<RouterProvider router={router} />);
+            
+            // Task History section should still be displayed
+            expect(screen.getByText(/Task History/i)).toBeInTheDocument();
+            // Table should be empty (no task entries)
+            expect(screen.queryByText(/task-001/i)).not.toBeInTheDocument();
+        });
+
+        it("handles missing maintenance dates gracefully", () => {
+            const robotWithoutMaintenance: RobotDetail = {
+                ...mockRobotDetail,
+                lastMaintenanceDate: undefined,
+                nextMaintenanceDue: undefined,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [robotWithoutMaintenance]);
+            render(<RouterProvider router={router} />);
+            
+            // Maintenance section should still be displayed
+            expect(screen.getByText(/Maintenance/i)).toBeInTheDocument();
+            // Dates should not be displayed
+            expect(screen.queryByText(/2025-11-15/i)).not.toBeInTheDocument();
+            expect(screen.queryByText(/2026-01-15/i)).not.toBeInTheDocument();
+        });
+
+        it("handles robot without current task", () => {
+            const robotWithoutTask: RobotDetail = {
+                ...mockRobotDetail,
+                currentTask: undefined,
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [robotWithoutTask]);
+            render(<RouterProvider router={router} />);
+            
+            // Current Task should not be displayed
+            expect(screen.queryByText(/Current Task:/i)).not.toBeInTheDocument();
+        });
+
+        it("displays all telemetry fields correctly", () => {
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            // Verify all position fields
+            expect(screen.getByText(/Position/i)).toBeInTheDocument();
+            expect(screen.getByText(/^X:$/)).toBeInTheDocument();
+            expect(screen.getByText(/^Y:$/)).toBeInTheDocument();
+            expect(screen.getByText(/^Z:$/)).toBeInTheDocument();
+            
+            // Verify all orientation fields
+            expect(screen.getByText(/Orientation/i)).toBeInTheDocument();
+            expect(screen.getByText(/^Roll:$/)).toBeInTheDocument();
+            expect(screen.getByText(/^Pitch:$/)).toBeInTheDocument();
+            expect(screen.getByText(/^Yaw:$/)).toBeInTheDocument();
+            
+            // Verify all velocity fields
+            expect(screen.getByText(/Velocity/i)).toBeInTheDocument();
+            expect(screen.getByText(/^Vx:$/)).toBeInTheDocument();
+            expect(screen.getByText(/^Vy:$/)).toBeInTheDocument();
+            expect(screen.getByText(/^Vz:$/)).toBeInTheDocument();
+        });
+
+        it("handles task history with all status types", () => {
+            const robotWithAllTaskStatuses: RobotDetail = {
+                ...mockRobotDetail,
+                taskHistory: [
+                    {
+                        taskId: "task-completed",
+                        taskName: "Completed Task",
+                        startTime: "2025-12-11T10:00:00Z",
+                        endTime: "2025-12-11T11:00:00Z",
+                        status: "completed",
+                    },
+                    {
+                        taskId: "task-failed",
+                        taskName: "Failed Task",
+                        startTime: "2025-12-11T12:00:00Z",
+                        endTime: "2025-12-11T13:00:00Z",
+                        status: "failed",
+                    },
+                    {
+                        taskId: "task-cancelled",
+                        taskName: "Cancelled Task",
+                        startTime: "2025-12-11T14:00:00Z",
+                        endTime: "2025-12-11T15:00:00Z",
+                        status: "cancelled",
+                    },
+                    {
+                        taskId: "task-in-progress",
+                        taskName: "In Progress Task",
+                        startTime: "2025-12-11T16:00:00Z",
+                        status: "in_progress",
+                    },
+                ],
+            };
+            const router = createRouterWithRobots("/robots/rbt-001", [robotWithAllTaskStatuses]);
+            render(<RouterProvider router={router} />);
+            
+            // Check all status types are displayed (may appear multiple times, so use getAllByText)
+            const completedChips = screen.getAllByText(/COMPLETED/i);
+            expect(completedChips.length).toBeGreaterThan(0);
+            const failedChips = screen.getAllByText(/FAILED/i);
+            expect(failedChips.length).toBeGreaterThan(0);
+            const cancelledChips = screen.getAllByText(/CANCELLED/i);
+            expect(cancelledChips.length).toBeGreaterThan(0);
+            const inProgressChips = screen.getAllByText(/IN PROGRESS/i);
+            expect(inProgressChips.length).toBeGreaterThan(0);
+        });
+    });
+
+    describe("Routing and Navigation", () => {
+        it("extracts robot ID from URL parameter", () => {
+            const router = createRouterWithRobots("/robots/rbt-001", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            // Should display the robot with ID rbt-001
+            expect(screen.getByText("Atlas-01")).toBeInTheDocument();
+            expect(screen.getByText(/rbt-001/)).toBeInTheDocument();
+        });
+
+        it("displays correct robot when different ID is in URL", () => {
+            const robot2: RobotDetail = {
+                ...mockRobotDetail,
+                id: "rbt-002",
+                name: "Atlas-02",
+                status: "charging" as const,
+            };
+            const robots = [mockRobotDetail, robot2];
+            const router = createRouterWithRobots("/robots/rbt-002", robots);
+            render(<RouterProvider router={router} />);
+            
+            // Should display robot 2, not robot 1
+            expect(screen.getByText("Atlas-02")).toBeInTheDocument();
+            expect(screen.getByText(/rbt-002/)).toBeInTheDocument();
+            expect(screen.queryByText("Atlas-01")).not.toBeInTheDocument();
+        });
+
+        it("navigates back to fleet overview when back button is clicked", () => {
+            const router = createMemoryRouter([
+                {
+                    path: "/",
+                    element: <div>Fleet Overview</div>,
+                },
+                {
+                    path: "/robots/:id",
+                    element: <RobotDetailPage robots={mockRobots} />,
+                },
+            ], {
+                initialEntries: ["/robots/rbt-001"],
+            });
+            render(<RouterProvider router={router} />);
+            
+            // Verify we're on the detail page
+            expect(screen.getByText("Atlas-01")).toBeInTheDocument();
+            
+            // Click back button
+            const backButton = screen.getByRole("button", { name: "Back" });
+            fireEvent.click(backButton);
+            
+            // Should navigate to fleet overview
+            expect(screen.getByText("Fleet Overview")).toBeInTheDocument();
+            expect(screen.queryByText("Atlas-01")).not.toBeInTheDocument();
+        });
+
+        it("navigates back using 'Back to Fleet Overview' button when robot not found", () => {
+            const router = createMemoryRouter([
+                {
+                    path: "/",
+                    element: <div>Fleet Overview</div>,
+                },
+                {
+                    path: "/robots/:id",
+                    element: <RobotDetailPage robots={mockRobots} />,
+                },
+            ], {
+                initialEntries: ["/robots/invalid-id"],
+            });
+            render(<RouterProvider router={router} />);
+            
+            // Verify error message is shown
+            expect(screen.getByText(/Robot not found/i)).toBeInTheDocument();
+            
+            // Click back button
+            const backButton = screen.getByRole("button", { name: "Back to Fleet Overview" });
+            fireEvent.click(backButton);
+            
+            // Should navigate to fleet overview
+            expect(screen.getByText("Fleet Overview")).toBeInTheDocument();
+        });
+
+        it("handles URL with different robot IDs correctly", () => {
+            const robot2: RobotDetail = {
+                ...mockRobotDetail,
+                id: "rbt-002",
+                name: "Atlas-02",
+                location: "Lab B",
+            };
+            const robot3: RobotDetail = {
+                ...mockRobotDetail,
+                id: "rbt-003",
+                name: "Hermes-01",
+                location: "Warehouse",
+            };
+            const robots = [mockRobotDetail, robot2, robot3];
+            
+            // Test robot 1
+            const router1 = createRouterWithRobots("/robots/rbt-001", robots);
+            const { unmount: unmount1 } = render(<RouterProvider router={router1} />);
+            expect(screen.getByText("Atlas-01")).toBeInTheDocument();
+            expect(screen.getByText(/Lab A/)).toBeInTheDocument();
+            unmount1();
+            
+            // Test robot 2
+            const router2 = createRouterWithRobots("/robots/rbt-002", robots);
+            const { unmount: unmount2 } = render(<RouterProvider router={router2} />);
+            expect(screen.getByText("Atlas-02")).toBeInTheDocument();
+            expect(screen.getByText(/Lab B/)).toBeInTheDocument();
+            unmount2();
+            
+            // Test robot 3
+            const router3 = createRouterWithRobots("/robots/rbt-003", robots);
+            render(<RouterProvider router={router3} />);
+            expect(screen.getByText("Hermes-01")).toBeInTheDocument();
+            expect(screen.getByText(/Warehouse/)).toBeInTheDocument();
+        });
+
+        it("displays error message for invalid robot ID in URL", () => {
+            const router = createRouterWithRobots("/robots/non-existent-robot", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            expect(screen.getByText(/Robot not found/i)).toBeInTheDocument();
+            expect(screen.getByText(/non-existent-robot/)).toBeInTheDocument();
+            expect(screen.queryByText("Atlas-01")).not.toBeInTheDocument();
+        });
+
+        it("handles malformed robot ID in URL", () => {
+            // Test with a robot ID that has special characters
+            const router = createRouterWithRobots("/robots/invalid@robot#id", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            // Should show error message
+            expect(screen.getByText(/Robot not found/i)).toBeInTheDocument();
+            // The error message includes the ID in quotes, so check for part of it
+            expect(screen.getByText(/invalid/i)).toBeInTheDocument();
+        });
+
+        it("displays correct robot when URL changes", () => {
+            const robot2: RobotDetail = {
+                ...mockRobotDetail,
+                id: "rbt-002",
+                name: "Atlas-02",
+                battery: 50,
+            };
+            const robots = [mockRobotDetail, robot2];
+            
+            // Test robot 1
+            const router1 = createRouterWithRobots("/robots/rbt-001", robots);
+            const { unmount: unmount1 } = render(<RouterProvider router={router1} />);
+            expect(screen.getByText("Atlas-01")).toBeInTheDocument();
+            expect(screen.getByText(/76%/i)).toBeInTheDocument();
+            unmount1();
+            
+            // Test robot 2
+            const router2 = createRouterWithRobots("/robots/rbt-002", robots);
+            render(<RouterProvider router={router2} />);
+            
+            // Should show robot 2 data
+            expect(screen.getByText("Atlas-02")).toBeInTheDocument();
+            expect(screen.getByText(/50%/i)).toBeInTheDocument();
+            expect(screen.queryByText("Atlas-01")).not.toBeInTheDocument();
+        });
+
+        it("calls useNavigate() with correct path when back button is clicked", () => {
+            const router = createMemoryRouter([
+                {
+                    path: "/",
+                    element: <div>Fleet Overview</div>,
+                },
+                {
+                    path: "/robots/:id",
+                    element: <RobotDetailPage robots={mockRobots} />,
+                },
+            ], {
+                initialEntries: ["/robots/rbt-001"],
+            });
+            render(<RouterProvider router={router} />);
+            
+            // Verify we're on detail page
+            expect(router.state.location.pathname).toBe("/robots/rbt-001");
+            
+            // Click back button
+            const backButton = screen.getByRole("button", { name: "Back" });
+            fireEvent.click(backButton);
+            
+            // Verify navigate was called with '/' path
+            expect(router.state.location.pathname).toBe("/");
+        });
+
+        it("handles browser back button behavior", () => {
+            const router = createMemoryRouter([
+                {
+                    path: "/",
+                    element: <FleetOverviewPage robots={mockRobotsBasic} />,
+                },
+                {
+                    path: "/robots/:id",
+                    element: <RobotDetailPage robots={mockRobots} />,
+                },
+            ], {
+                initialEntries: ["/", "/robots/rbt-001"],
+            });
+            render(<RouterProvider router={router} />);
+            
+            // Should be on detail page
+            expect(router.state.location.pathname).toBe("/robots/rbt-001");
+            expect(screen.getByText("Atlas-01")).toBeInTheDocument();
+            
+            // Simulate browser back button
+            router.navigate(-1);
+            
+            // Should be back on fleet overview
+            expect(router.state.location.pathname).toBe("/");
+            expect(screen.getByText("Atlas-01")).toBeInTheDocument();
+        });
+
+        it("handles browser forward button behavior", () => {
+            const router = createMemoryRouter([
+                {
+                    path: "/",
+                    element: <FleetOverviewPage robots={mockRobotsBasic} />,
+                },
+                {
+                    path: "/robots/:id",
+                    element: <RobotDetailPage robots={mockRobots} />,
+                },
+            ], {
+                initialEntries: ["/", "/robots/rbt-001"],
+            });
+            render(<RouterProvider router={router} />);
+            
+            // Start on detail page
+            expect(router.state.location.pathname).toBe("/robots/rbt-001");
+            
+            // Go back
+            router.navigate(-1);
+            expect(router.state.location.pathname).toBe("/");
+            
+            // Go forward
+            router.navigate(1);
+            expect(router.state.location.pathname).toBe("/robots/rbt-001");
+            expect(screen.getByText("Atlas-01")).toBeInTheDocument();
+        });
+
+        it("handles direct URL access to robot detail page with valid ID", () => {
+            const router = createMemoryRouter([
+                {
+                    path: "/",
+                    element: <FleetOverviewPage robots={mockRobotsBasic} />,
+                },
+                {
+                    path: "/robots/:id",
+                    element: <RobotDetailPage robots={mockRobots} />,
+                },
+            ], {
+                initialEntries: ["/robots/rbt-001"],
+            });
+            render(<RouterProvider router={router} />);
+            
+            // Should display robot detail page directly
+            expect(screen.getByText("Atlas-01")).toBeInTheDocument();
+            expect(screen.getByText(/rbt-001/)).toBeInTheDocument();
+            expect(router.state.location.pathname).toBe("/robots/rbt-001");
+        });
+
+        it("handles invalid robot ID with 404-like error message", () => {
+            const router = createRouterWithRobots("/robots/invalid-robot-id", mockRobots);
+            render(<RouterProvider router={router} />);
+            
+            // Should show error message (404-like behavior)
+            expect(screen.getByText(/Robot not found/i)).toBeInTheDocument();
+            expect(screen.getByText(/invalid-robot-id/)).toBeInTheDocument();
+            expect(screen.queryByText("Atlas-01")).not.toBeInTheDocument();
+        });
     });
 });

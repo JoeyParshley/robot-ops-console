@@ -112,6 +112,102 @@ export const RobotDetailPage = ({
                     />
                 </Box>
 
+                {/* Operator Controls */}
+                <Box sx={{ mb: 3 }}>
+                    <Card variant="outlined" sx={{ bgcolor: 'background.paper' }}>
+                        <CardContent>
+                            <Typography variant="h6" gutterBottom>Operator Controls</Typography>
+                            <Box sx={{ 
+                                display: 'flex', 
+                                flexWrap: 'wrap', 
+                                gap: 2, 
+                                mt: 2,
+                                flexDirection: { xs: 'column', sm: 'row' }
+                            }}>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    disabled={robot.status !== 'idle'}
+                                    onClick={() => {
+                                        // TODO: Implement start command
+                                        console.log(`Starting robot ${robot.id}`);
+                                    }}
+                                    sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
+                                >
+                                    Start
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    disabled={robot.status !== 'active'}
+                                    onClick={() => {
+                                        // TODO: Implement pause command
+                                        console.log(`Pausing robot ${robot.id}`);
+                                    }}
+                                    sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
+                                >
+                                    Pause
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    disabled={robot.status !== 'idle'}
+                                    onClick={() => {
+                                        // TODO: Implement resume command
+                                        console.log(`Resuming robot ${robot.id}`);
+                                    }}
+                                    sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
+                                >
+                                    Resume
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    color="info"
+                                    disabled={robot.status === 'charging' || robot.status === 'error'}
+                                    onClick={() => {
+                                        // TODO: Implement return to dock command
+                                        console.log(`Returning robot ${robot.id} to dock`);
+                                    }}
+                                    sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
+                                >
+                                    Return to Dock
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    color="error"
+                                    size="large"
+                                    disabled={robot.status === 'error'}
+                                    onClick={() => {
+                                        // TODO: Implement emergency stop command
+                                        console.log(`EMERGENCY STOP for robot ${robot.id}`);
+                                        if (window.confirm('Are you sure you want to execute an emergency stop?')) {
+                                            // Emergency stop confirmed
+                                        }
+                                    }}
+                                    sx={{
+                                        fontWeight: 'bold',
+                                        minWidth: { xs: '100%', sm: 180 },
+                                        fontSize: '1rem',
+                                        py: 1.5,
+                                        border: '2px solid',
+                                        borderColor: 'error.dark',
+                                        boxShadow: 4,
+                                        '&:hover': {
+                                            boxShadow: 6,
+                                            borderColor: 'error.dark',
+                                        },
+                                        '&:disabled': {
+                                            borderColor: 'transparent',
+                                        },
+                                    }}
+                                >
+                                    Emergency Stop
+                                </Button>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Box>
+
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                     {/* Basic Information */}
                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
