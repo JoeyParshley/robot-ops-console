@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import { Container } from '@mui/material'
 import { FleetOverviewPage } from './pages/FleetOverviewPage'
 import { RobotDetailPage } from './pages/RobotDetailPage'
-import { mockRobots } from './mock/robots'
+import { mockRobots, mockRobotDetails } from './mock/robots'
 import './App.css'
 
 function App() {
@@ -15,7 +15,7 @@ function App() {
         />
         <Route
           path="/robots/:id"
-          element={<RobotDetailPage robots={mockRobots} />}
+          element={<RobotDetailPage robots={mockRobotDetails} />}
         />
       </Routes>
     </Container>
