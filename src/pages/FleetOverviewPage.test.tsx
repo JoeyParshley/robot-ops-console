@@ -13,6 +13,20 @@ const mockRobots: Robot[] =[
         location: "Lab A",
         lastHeartbeat: "2024-06-01T12:00:00Z",
         currentTask: "Patrol Area 1",
+        tether: {
+            isTethered: true,
+            tetherLength: 50,
+            anchorPoint: { x: 0, y: 0, z: 0 },
+            currentTetherExtension: 25.5,
+        },
+        flightArea: {
+            minX: -25,
+            maxX: 25,
+            minY: -25,
+            maxY: 25,
+            minZ: 0,
+            maxZ: 15,
+        },
     },
     {
         id: "rbt-002",
@@ -22,6 +36,20 @@ const mockRobots: Robot[] =[
         location: "Charging Station 3",
         lastHeartbeat: "2024-06-01T11:58:00Z",
         currentTask: "Awaiting Assignment",
+        tether: {
+            isTethered: true,
+            tetherLength: 40,
+            anchorPoint: { x: 10, y: 5, z: 0 },
+            currentTetherExtension: 5.2,
+        },
+        flightArea: {
+            minX: -20,
+            maxX: 20,
+            minY: -20,
+            maxY: 20,
+            minZ: 0,
+            maxZ: 12,
+        },
     }
 ];
 
@@ -33,5 +61,35 @@ describe("FleetOverviewPage", () => {
 
         expect(screen.getByText("RoboOne")).toBeInTheDocument();
         expect(screen.getByText("RoboTwo")).toBeInTheDocument();
+    });
+
+    it("displays tether information for tethered robots", () => {
+        render(
+            <FleetOverviewPage robots={mockRobots} onRobotSelected={vi.fn()} />
+        );
+
+        // Check that tether extension and length are displayed
+        expect(screen.getByText(/25\.5m \/ 50m/)).toBeInTheDocument();
+        expect(screen.getByText(/5\.2m \/ 40m/)).toBeInTheDocument();
+    });
+
+    it("displays flight area boundaries", () => {
+        render(
+            <FleetOverviewPage robots={mockRobots} onRobotSelected={vi.fn()} />
+        );
+
+        // Check that flight area is displayed (format: "minX to maxX × minY to maxY × minZ to maxZm")
+        expect(screen.getByText(/-25 to 25 × -25 to 25 × 0 to 15m/)).toBeInTheDocument();
+        expect(screen.getByText(/-20 to 20 × -20 to 20 × 0 to 12m/)).toBeInTheDocument();
+    });
+
+    it("calls onRobotSelected when a robot row is clicked", () => {
+        const handleRobotSelected = vi.fn();
+        render(
+            <FleetOverviewPage robots={mockRobots} onRobotSelected={handleRobotSelected} />
+        );
+
+        fireEvent.click(screen.getByText("RoboOne").closest("tr")!);
+        expect(handleRobotSelected).toHaveBeenCalledWith("rbt-001");
     });
 });
