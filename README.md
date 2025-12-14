@@ -187,3 +187,6 @@ Run tests with:
 ```bash
 npm run test
 npm run test:watch
+```
+
+For comprehensive testing instructions, see [docs/TESTING.md](docs/TESTING.md).
