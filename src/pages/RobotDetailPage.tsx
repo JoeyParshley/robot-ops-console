@@ -21,11 +21,13 @@ import {
     DialogActions,
     Snackbar,
     Alert,
-    CircularProgress
+    CircularProgress,
+    Tooltip,
 } from '@mui/material';
 import type { RobotDetail } from '../types/robot';
 import { useRobotControls } from '../hooks/useRobotControls';
 import { useRobotState } from '../context/RobotStateContext';
+import { useTelemetry, type TelemetryUpdate } from '../hooks/useTelemetry';
 
 interface RobotDetailPageProps {
     robots: RobotDetail[];
@@ -97,48 +99,90 @@ export const RobotDetailPage = ({
         robots = robotsProp;
     }
 
-    // Find robot by ID
-    const foundRobot = robots.find(r => r.id === id);
+        // Find robot by ID
+        const foundRobot = robots.find(r => r.id === id);
 
-    // Use custom hook for robot controls
-    const {
-        robotStatus,
-        loading,
-        snackbar,
-        confirmDialog,
-        handlers,
-        closeSnackbar,
-        closeConfirmDialog,
-    } = useRobotControls({
-        robotId: id || '',
-        initialStatus: foundRobot?.status || 'idle',
-        onStatusChange: (newStatus) => {
-            if (updateRobotStatus && id) {
-                updateRobotStatus(id, newStatus);
-            }
-        },
-    });
-
-    // Create robot with current status
-    const robot = foundRobot ? { ...foundRobot, status: robotStatus } : null;
+        // Use telemetry hook for real-time data
+        const {
+            telemetry: robotTelemetry,
+            connected,
+            connecting,
+            error: telemetryError,
+            sendCommand: sendTelemetryCommand,
+        } = useTelemetry({
+            robotId: id,
+            url: 'ws://localhost:8080',
+            autoConnect: true,
+            reconnect: true,
+        });
+    
+        // Use custom hook for robot controls
+        const {
+            robotStatus,
+            loading,
+            snackbar,
+            confirmDialog,
+            handlers,
+            closeSnackbar,
+            closeConfirmDialog,
+        } = useRobotControls({
+            robotId: id || '',
+            initialStatus: foundRobot?.status || 'idle',
+            onStatusChange: (newStatus) => {
+                if (updateRobotStatus && id) {
+                    updateRobotStatus(id, newStatus);
+                }
+            },
+        });
+    
+        // Merge telemetry data with robot data (fallback to mock data if WebSocket unavailable)
+        const telemetry = robotTelemetry && typeof robotTelemetry === 'object' && 'robotId' in robotTelemetry
+            ? robotTelemetry as TelemetryUpdate
+            : null;
+        
+        const robot = foundRobot ? {
+            ...foundRobot,
+            // Use real-time telemetry if available, otherwise use mock data
+            currentPosition: telemetry?.position ?? foundRobot.currentPosition,
+            currentOrientation: telemetry?.orientation ?? foundRobot.currentOrientation,
+            currentVelocity: telemetry?.velocity ?? foundRobot.currentVelocity,
+            battery: telemetry?.battery ?? foundRobot.battery,
+            status: telemetry?.status ?? (robotStatus || foundRobot.status),
+            lastHeartbeat: telemetry?.lastHeartbeat ?? foundRobot.lastHeartbeat,
+        } as RobotDetail : null;
 
     // Handle invalid robot ID
     if (!robot) {
         return (
-            <Paper elevation={3} sx={{ p: 2 }}>
-                <Typography variant="h5" color="error">
-                    Robot not found
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    Robot ID "{id}" does not exist in the fleet.
-                </Typography>
-                <Button 
-                    variant="outlined" 
-                    onClick={() => navigate('/')}
-                    sx={{ mt: 2 }}
-                >
-                    Back to Fleet Overview
+            <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
+                <Button variant="outlined" color="primary" onClick={() => navigate('/')}>
+                    Back
                 </Button>
+                <Typography variant="h4">Unknown Robot</Typography>
+                <Chip 
+                    label="NOT FOUND"
+                    color="error"
+                />
+                {/* Connection Status Indicator */}
+                <Tooltip title={
+                    connecting ? 'Connecting to telemetry server...' :
+                    connected ? 'Connected to real-time telemetry' :
+                    telemetryError ? `Connection error: ${telemetryError.message}` :
+                    'Using mock data (WebSocket unavailable)'
+                }>
+                    <Chip
+                        size="small"
+                        label={connecting ? 'Connecting...' : connected ? 'Live' : 'Offline'}
+                        color={
+                            connecting ? 'default' :
+                            connected ? 'success' :
+                            telemetryError ? 'error' : 'warning'
+                        }
+                        icon={connecting ? <CircularProgress size={16} /> : undefined}
+                    />
+                </Tooltip>
+            </Box>
             </Paper>
         );
     }
@@ -146,15 +190,33 @@ export const RobotDetailPage = ({
     return (
         <Box>
             <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
-                <Button variant="outlined" color="primary" onClick={() => navigate('/')}>
-                    Back
-                </Button>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2, flexWrap: 'wrap' }}>
+                    <Button variant="outlined" color="primary" onClick={() => navigate('/')}>
+                        Back
+                    </Button>
                     <Typography variant="h4">{robot.name}</Typography>
-                <Chip 
-                    label={robot.status.toUpperCase()} 
-                    color={getStatusChipColor(robot.status) as any} 
-                />
+                    <Chip 
+                        label={robot.status.toUpperCase()} 
+                        color={getStatusChipColor(robot.status) as any} 
+                    />
+                    {/* Connection Status Indicator */}
+                    <Tooltip title={
+                        connecting ? 'Connecting to telemetry server...' :
+                        connected ? 'Connected to real-time telemetry' :
+                        telemetryError ? `Connection error: ${telemetryError.message}` :
+                        'Using mock data (WebSocket unavailable)'
+                    }>
+                        <Chip
+                            size="small"
+                            label={connecting ? 'Connecting...' : connected ? 'Live' : 'Offline'}
+                            color={
+                                connecting ? 'default' :
+                                connected ? 'success' :
+                                telemetryError ? 'error' : 'warning'
+                            }
+                            icon={connecting ? <CircularProgress size={16} /> : undefined}
+                        />
+                    </Tooltip>
                 </Box>
 
                 {/* Operator Controls */}
@@ -172,8 +234,13 @@ export const RobotDetailPage = ({
                                 <Button
                                     variant="contained"
                                     color="primary"
-                                    disabled={robot.status !== 'idle' || loading !== null}
-                                    onClick={handlers.handleStart}
+                                    disabled={robot.status !== 'idle' || loading !== null || (!connected && !connecting)}
+                                    onClick={() => {
+                                        handlers.handleStart();
+                                        if (connected && id) {
+                                            sendTelemetryCommand(id, 'start');
+                                        }
+                                    }}
                                     startIcon={loading === 'Start' ? <CircularProgress size={16} color="inherit" /> : null}
                                     sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
                                 >
@@ -182,8 +249,13 @@ export const RobotDetailPage = ({
                                 <Button
                                     variant="contained"
                                     color="primary"
-                                    disabled={robot.status !== 'active' || loading !== null}
-                                    onClick={handlers.handlePause}
+                                    disabled={robot.status !== 'active' || loading !== null || (!connected && !connecting)}
+                                    onClick={() => {
+                                        handlers.handlePause();
+                                        if (connected && id) {
+                                            sendTelemetryCommand(id, 'pause');
+                                        }
+                                    }}
                                     startIcon={loading === 'Pause' ? <CircularProgress size={16} color="inherit" /> : null}
                                     sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
                                 >
@@ -192,8 +264,13 @@ export const RobotDetailPage = ({
                                 <Button
                                     variant="contained"
                                     color="primary"
-                                    disabled={robot.status !== 'idle' || loading !== null}
-                                    onClick={handlers.handleResume}
+                                    disabled={robot.status !== 'idle' || loading !== null || (!connected && !connecting)}
+                                    onClick={() => {
+                                        handlers.handleResume();
+                                        if (connected && id) {
+                                            sendTelemetryCommand(id, 'resume');
+                                        }
+                                    }}
                                     startIcon={loading === 'Resume' ? <CircularProgress size={16} color="inherit" /> : null}
                                     sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
                                 >
@@ -202,8 +279,13 @@ export const RobotDetailPage = ({
                                 <Button
                                     variant="contained"
                                     color="info"
-                                    disabled={robot.status === 'charging' || robot.status === 'error' || loading !== null}
-                                    onClick={handlers.handleReturnToDock}
+                                    disabled={robot.status === 'charging' || robot.status === 'error' || loading !== null || (!connected && !connecting)}
+                                    onClick={() => {
+                                        handlers.handleReturnToDock();
+                                        if (connected && id) {
+                                            sendTelemetryCommand(id, 'returnToDock');
+                                        }
+                                    }}
                                     startIcon={loading === 'Return to Dock' ? <CircularProgress size={16} color="inherit" /> : null}
                                     sx={{ flex: { xs: 1, sm: '0 1 auto' } }}
                                 >
@@ -213,8 +295,13 @@ export const RobotDetailPage = ({
                                     variant="contained"
                                     color="error"
                                     size="large"
-                                    disabled={robot.status === 'error' || loading !== null}
-                                    onClick={handlers.handleEmergencyStop}
+                                    disabled={robot.status === 'error' || loading !== null || (!connected && !connecting)}
+                                    onClick={() => {
+                                        handlers.handleEmergencyStop();
+                                        if (connected && id) {
+                                            sendTelemetryCommand(id, 'emergencyStop');
+                                        }
+                                    }}
                                     startIcon={loading === 'Emergency Stop' ? <CircularProgress size={16} color="inherit" /> : null}
                                     sx={{
                                         fontWeight: 'bold',
@@ -231,6 +318,7 @@ export const RobotDetailPage = ({
                                         '&:disabled': {
                                             borderColor: 'transparent',
                                         },
+                                        flex: { xs: 1, sm: '0 1 auto' }
                                     }}
                                 >
                                     {loading === 'Emergency Stop' ? 'Stopping...' : 'Emergency Stop'}
@@ -574,6 +662,29 @@ export const RobotDetailPage = ({
                     sx={{ width: '100%' }}
                 >
                     {snackbar.message}
+                </Alert>
+            </Snackbar>
+
+            {/* WebSocket Error Feedback */}
+            <Snackbar
+                open={!!telemetryError && !connected && !connecting}
+                autoHideDuration={8000}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            >
+                <Alert 
+                    severity="warning" 
+                    sx={{ width: '100%' }}
+                    action={
+                        <Button 
+                            color="inherit" 
+                            size="small" 
+                            onClick={() => window.location.reload()}
+                        >
+                            Retry
+                        </Button>
+                    }
+                >
+                    Using mock data: {telemetryError?.message || 'WebSocket unavailable'}
                 </Alert>
             </Snackbar>
         </Box>
