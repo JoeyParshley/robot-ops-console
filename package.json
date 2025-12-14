@@ -9,15 +9,15 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "electron:dev": "tsc -p tsconfig.electron.json && concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron dist-electron/main.js\" --kill-others-on-fail",
-    "electron:build": "vite build && tsc -p tsconfig.electron.json",
+    "electron:dev": "tsc -p tsconfig.electron.json && concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron dist-electron/main.cjs\" --kill-others-on-fail",
+    "electron:build": "vite build && tsc -p tsconfig.electron.json && node -e \"const fs=require('fs');['main.js','preload.js'].forEach(f=>{const p='dist-electron/'+f;if(fs.existsSync(p))fs.renameSync(p,p.replace('.js','.cjs'))})\"",
     "electron:pack": "npm run electron:build && electron-builder --dir",
     "electron:dist": "npm run electron:build && electron-builder",
     "electron:dist:mac": "npm run electron:build && electron-builder --mac",
     "electron:dist:win": "npm run electron:build && electron-builder --win",
     "electron:dist:linux": "npm run electron:build && electron-builder --linux"
   },
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/main.cjs",
   "author": "Your Name",
   "description": "A React + TypeScript proof-of-concept exploring UI patterns for robotics operator dashboards",
   "build": {
@@ -29,8 +29,11 @@
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*",
+      "dist-electron/**/*.cjs",
       "package.json"
+    ],
+    "asarUnpack": [
+      "dist-electron/preload.cjs"
     ],
     "mac": {
       "category": "public.app-category.utilities",

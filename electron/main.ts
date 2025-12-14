@@ -1,15 +1,16 @@
-import { app, BrowserWindow, Menu, dialog, session } from 'electron';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+const { app, BrowserWindow, Menu, dialog, session } = require('electron');
+const { join, dirname } = require('path');
+const { readFileSync, writeFileSync, existsSync, mkdirSync } = require('fs');
 
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Import types for TypeScript
+import type { BrowserWindow as BrowserWindowType, MenuItemConstructorOptions, WebContents, Certificate as ElectronCertificate } from 'electron';
+
+// In CommonJS, __dirname is available directly
+// No need for import.meta.url workaround
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
-let mainWindow: BrowserWindow | null = null;
+let mainWindow: BrowserWindowType | null = null;
 
 // Error logging
 interface ErrorLog {
@@ -101,7 +102,7 @@ function loadWindowState(): WindowState {
   return defaultState;
 }
 
-function saveWindowState(window: BrowserWindow) {
+function saveWindowState(window: BrowserWindowType) {
   try {
     const bounds = window.getBounds();
     const state: WindowState = {
@@ -139,7 +140,7 @@ function getAppVersion(): string {
 
 // Create application menu
 function createMenu() {
-  const template: Electron.MenuItemConstructorOptions[] = [
+  const template: MenuItemConstructorOptions[] = [
     {
       label: 'File',
       submenu: [
@@ -247,7 +248,7 @@ function createMenu() {
   if (!isDev) {
     const viewMenu = template.find((item) => item.label === 'View');
     if (viewMenu && 'submenu' in viewMenu && Array.isArray(viewMenu.submenu)) {
-      const submenu = viewMenu.submenu as Electron.MenuItemConstructorOptions[];
+      const submenu = viewMenu.submenu as MenuItemConstructorOptions[];
       const devToolsIndex = submenu.findIndex(
         (item) => item.label === 'Toggle Developer Tools'
       );
@@ -326,7 +327,59 @@ function createWindow() {
   // Load window state
   const windowState = loadWindowState();
 
-  const preloadPath = join(__dirname, 'preload.js');
+  // Get correct paths for both development and production
+  // In production, preload.js is unpacked from asar (see package.json asarUnpack)
+  // In development, it's in dist-electron alongside main.js
+  let finalPreloadPath: string;
+  
+  if (isDev) {
+    // Development: preload is in dist-electron alongside main.cjs
+    finalPreloadPath = join(__dirname, 'preload.cjs');
+    console.log('Development mode - preload path:', finalPreloadPath);
+  } else {
+    // Production: preload is unpacked to app.asar.unpacked/dist-electron/preload.js
+    // app.getAppPath() returns path to app.asar, we need to replace it with app.asar.unpacked
+    const appPath = app.getAppPath();
+    let unpackedPath: string;
+    
+    if (appPath.includes('app.asar')) {
+      // Replace app.asar with app.asar.unpacked
+      unpackedPath = appPath.replace('app.asar', 'app.asar.unpacked');
+    } else {
+      // If not in asar (unpacked build), use appPath directly
+      unpackedPath = appPath;
+    }
+    
+    const preloadUnpacked = join(unpackedPath, 'dist-electron', 'preload.cjs');
+    const preloadAsar = join(appPath, 'dist-electron', 'preload.cjs');
+    const preloadDirname = join(__dirname, 'preload.cjs');
+    
+    console.log('Production mode - checking paths:');
+    console.log('  App path:', appPath);
+    console.log('  Unpacked path:', unpackedPath);
+    console.log('  Preload unpacked:', preloadUnpacked, 'exists:', existsSync(preloadUnpacked));
+    console.log('  Preload asar:', preloadAsar, 'exists:', existsSync(preloadAsar));
+    console.log('  Preload __dirname:', preloadDirname, 'exists:', existsSync(preloadDirname));
+    
+    // Try unpacked location first (preferred - this is where asarUnpack puts it)
+    if (existsSync(preloadUnpacked)) {
+      finalPreloadPath = preloadUnpacked;
+      console.log('✓ Using unpacked preload path');
+    } else if (existsSync(preloadAsar)) {
+      finalPreloadPath = preloadAsar;
+      console.log('✓ Using asar preload path');
+    } else if (existsSync(preloadDirname)) {
+      finalPreloadPath = preloadDirname;
+      console.log('✓ Using __dirname preload path');
+    } else {
+      // Use unpacked path even if not found (will show error but at least try)
+      finalPreloadPath = preloadUnpacked;
+      console.error('ERROR: Preload file not found in any location!');
+      console.error('Will try:', finalPreloadPath);
+    }
+  }
+  
+  console.log('Final preload path:', finalPreloadPath);
 
   mainWindow = new BrowserWindow({
     x: windowState.x,
@@ -347,7 +400,7 @@ function createWindow() {
       
       // ✅ SECURITY: Use preload script for secure IPC
       // Only way to safely expose APIs to renderer process
-      preload: preloadPath,
+      preload: finalPreloadPath,
       
       // ✅ SECURITY: Keep web security enabled
       // Prevents bypassing same-origin policy
@@ -359,10 +412,10 @@ function createWindow() {
 
   // Restore maximized or fullscreen state
   if (windowState.isMaximized) {
-    mainWindow.maximize();
+    mainWindow?.maximize();
   }
   if (windowState.isFullScreen) {
-    mainWindow.setFullScreen(true);
+    mainWindow?.setFullScreen(true);
   }
 
   // Save window state on move/resize
@@ -376,15 +429,15 @@ function createWindow() {
     }, 500); // Debounce saves
   };
 
-  mainWindow.on('moved', scheduleSaveState);
-  mainWindow.on('resized', scheduleSaveState);
-  mainWindow.on('maximize', scheduleSaveState);
-  mainWindow.on('unmaximize', scheduleSaveState);
-  mainWindow.on('enter-full-screen', scheduleSaveState);
-  mainWindow.on('leave-full-screen', scheduleSaveState);
+  mainWindow?.on('moved', scheduleSaveState);
+  mainWindow?.on('resized', scheduleSaveState);
+  mainWindow?.on('maximize', scheduleSaveState);
+  mainWindow?.on('unmaximize', scheduleSaveState);
+  mainWindow?.on('enter-full-screen', scheduleSaveState);
+  mainWindow?.on('leave-full-screen', scheduleSaveState);
 
   // Handle renderer process errors
-  mainWindow.webContents.on('render-process-gone', (event, details) => {
+  mainWindow?.webContents.on('render-process-gone', (event, details) => {
     logError(new Error(`Render process crashed: ${details.reason}`), {
       type: 'renderProcessGone',
       reason: details.reason,
@@ -399,7 +452,7 @@ function createWindow() {
   });
 
   // Handle failed page loads
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+  mainWindow?.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     logError(new Error(`Failed to load page: ${errorDescription}`), {
       type: 'pageLoadFailed',
       errorCode,
@@ -422,7 +475,7 @@ function createWindow() {
   });
 
   // Handle certificate errors (for development only)
-  mainWindow.webContents.on('certificate-error', (event, url, error, certificate, callback) => {
+  mainWindow?.webContents.on('certificate-error', (event, url, error, certificate, callback) => {
     if (isDev && url.includes('localhost')) {
       // In development, allow self-signed certificates for localhost
       event.preventDefault();
@@ -440,7 +493,7 @@ function createWindow() {
 
   // ✅ SECURITY: Prevent new window creation (popups)
   // Intercept window.open() calls and block them
-  mainWindow.webContents.setWindowOpenHandler(() => {
+  mainWindow?.webContents.setWindowOpenHandler(() => {
     logError(new Error('Blocked attempt to open new window'), {
       type: 'blockedWindowOpen',
     });
@@ -448,13 +501,19 @@ function createWindow() {
   });
 
   // Show window when ready to prevent visual flash
-  mainWindow.once('ready-to-show', () => {
+  mainWindow?.once('ready-to-show', () => {
     mainWindow?.show();
     
     // Focus the window
     if (isDev) {
       mainWindow?.webContents.openDevTools();
     }
+    // DevTools disabled in production for security
+  });
+  
+  // Log when window is ready (for debugging)
+  mainWindow?.webContents.once('did-finish-load', () => {
+    console.log('Window finished loading');
   });
 
   // Load the app with error handling
@@ -465,17 +524,38 @@ function createWindow() {
         await mainWindow!.loadURL('http://localhost:5173');
       } else {
         // In production, load from built files
-        await mainWindow!.loadFile(join(__dirname, '..', 'dist', 'index.html'));
+        // Use app.getAppPath() to get correct path in packaged app
+        const appPath = app.getAppPath();
+        const indexPath = join(appPath, 'dist', 'index.html');
+        
+        // Use loadURL with file:// protocol to ensure proper base path
+        // This prevents React Router from trying to match the full file path
+        const fileUrl = `file://${indexPath}`;
+        
+        // Log for debugging (remove in final version if desired)
+        console.log('Loading app from:', fileUrl);
+        console.log('App path:', appPath);
+        console.log('__dirname:', __dirname);
+        
+        await mainWindow!.loadURL(fileUrl);
       }
     } catch (error) {
-      logError(error as Error, { type: 'loadAppFailed' });
+      logError(error as Error, { 
+        type: 'loadAppFailed',
+        appPath: app.getAppPath(),
+        __dirname,
+        isDev,
+      });
       
-      // Show error dialog
+      // Show error dialog with more details
+      const errorMessage = error instanceof Error ? error.message : String(error);
       dialog.showErrorBox(
         'Failed to Load Application',
-        'The application could not be loaded.\n\n' +
-        'Please try restarting the application. If the problem persists, ' +
-        'the application may need to be reinstalled.'
+        `The application could not be loaded.\n\n` +
+        `Error: ${errorMessage}\n\n` +
+        `App Path: ${app.getAppPath()}\n` +
+        `Please try restarting the application. If the problem persists, ` +
+        `the application may need to be reinstalled.`
       );
     }
   };
@@ -483,7 +563,7 @@ function createWindow() {
   loadApp();
 
   // Handle window close
-  mainWindow.on('close', (event) => {
+  mainWindow?.on('close', (event) => {
     // On macOS, closing the window doesn't quit the app
     if (process.platform === 'darwin') {
       event.preventDefault();
@@ -492,7 +572,7 @@ function createWindow() {
     // On other platforms, the default behavior (quit) is fine
   });
 
-  mainWindow.on('closed', () => {
+  mainWindow?.on('closed', () => {
     // Save final window state before closing
     if (mainWindow && !mainWindow.isDestroyed()) {
       saveWindowState(mainWindow);
@@ -542,7 +622,7 @@ app.on('window-all-closed', () => {
 });
 
 // Handle app certificate errors globally
-app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+app.on('certificate-error', (event: Event, _webContents: WebContents, url: string, error: string, _certificate: ElectronCertificate, callback: (allow: boolean) => void) => {
   if (isDev && url.includes('localhost')) {
     // In development, allow self-signed certificates for localhost
     event.preventDefault();

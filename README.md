@@ -1,318 +1,380 @@
-# Robot Ops Console (Proof of Concept)
+# Robot Operations Console
 
-A React + TypeScript proof-of-concept exploring UI patterns for robotics operator dashboards — including fleet monitoring, robot status visualization, and control interfaces.  
-This POC was built using **test-driven development (TDD)** and inspired by the challenges of designing clear, reliable UIs for **Alert Venture Foundry**–style zero-to-one robotics products.
-
----
-
-## 🚀 Project Overview
-
-The **Robot Ops Console** demonstrates early ideas for a monitoring and control interface for a small fleet of robots.  
-The goals of this POC are to explore:
-
-- Real-time, data-driven UI architecture  
-- Operator-focused workflows and clarity  
-- Navigation between fleet-level and per-robot detail views  
-- UI patterns suitable for **local desktop deployment** (Electron) or web environments  
-
-Live telemetry is available via the WebSocket simulator. Desktop deployment via Electron is available (see "Running as Electron Desktop App" below).
+A real-time monitoring and control interface for tethered flying robots, built as a proof-of-concept to demonstrate modern frontend engineering practices for robotics operator dashboards.
 
 ---
 
-## 🎯 Motivation & Context
+## 🎯 Executive Summary
 
-This project blends my background in **R&D mechanical engineering at Velcro**—where I worked with real-time UIs for monitoring temperatures, pressures, and plastic hook processing—with my passion for building **human-centered software interfaces**.
+**Robot Operations Console** is a React + TypeScript desktop application that provides operators with real-time fleet monitoring, individual robot control, and live telemetry visualization. Built independently over a weekend to explore UI patterns for robotics operations, this project demonstrates:
 
-Working with industrial operator consoles is what originally sparked my interest in UI design: their clarity, or lack thereof, had direct impact on process quality, safety, and decision-making.
+- **TypeScript-first development** for type safety and maintainability
+- **Custom React hooks** for reusable business logic (`useTelemetry`, `useRobotControls`)
+- **Context-based state management** for shared robot fleet data
+- **Electron desktop deployment** for operator console environments
+- **Test-driven development** with comprehensive test coverage
+- **Modern tooling**: Vite, React Router v7, Material UI
 
-This POC mirrors the interface challenges present in early-stage robotics environments:
+This aligns directly with AVF's mission to develop groundbreaking technologies, showcasing the interface layer that connects human operators to autonomous systems—a critical component for any robotics venture.
 
-- Telemetry visualization  
-- Operator safety and workflow  
-- Diagnostics and control panels  
-- Rapid iteration under uncertainty  
-
-It also serves as preparation for the **Frontend Software Engineer (Web & Local UI)** role at **Alert Venture Foundry**.
-
----
-
-## 🧰 Tech Stack
-
-### **Core Technologies**
-- React + TypeScript (Vite)
-- MUI (Material UI)
-- React Router v7
-- Vitest + React Testing Library (TDD)
-- JSDOM test environment
-
-### **Telemetry Simulator**
-- Node.js WebSocket server for real-time telemetry simulation
-- See `server/` directory and `docs/TELEMETRY_SIMULATOR.md` for details  
-- `useTelemetry(robotId)` streaming hook  
-- Diagnostics dashboard (health, alerts, logs)
-
-### **Desktop Application (Electron)**
-- Standalone desktop application with native window management
-- Window state persistence (remembers size and position)
-- Full application menu with keyboard shortcuts
-- Fullscreen mode support for operator consoles
-- Platform-specific optimizations (macOS, Windows, Linux)
+**[📄 Quick Summary for Hiring Manager →](EXECUTIVE_SUMMARY.md)**
 
 ---
 
-## 🚀 Getting Started
+## 🚀 What It Does
+
+**Robot Operations Console** provides operators with:
+
+- **Fleet Overview**: Real-time status monitoring of multiple tethered flying robots with battery levels, location, tether status, and flight area boundaries
+- **Robot Detail Pages**: Individual robot control panels with telemetry visualization, operator controls (start, pause, emergency stop), and diagnostic information
+- **Live Telemetry**: WebSocket-based real-time data streaming showing position, orientation, velocity, and health metrics
+- **Desktop Deployment**: Electron-based standalone application optimized for operator console environments
+
+The app demonstrates UI patterns critical for robotics operations: clarity under pressure, real-time data visualization, and reliable control interfaces that operators can trust.
+
+---
+
+## 💻 Technical Architecture & Design Decisions
+
+### TypeScript: Why It Matters for This Application
+
+TypeScript was chosen as the foundation for this project because:
+
+1. **Safety-Critical Operations**: In robotics, type errors can lead to incorrect commands being sent to robots. TypeScript catches these at compile-time:
+   ```typescript
+   // TypeScript ensures we can't accidentally send invalid status values
+   type RobotStatus = "idle" | "active" | "charging" | "error";
+   const updateRobotStatus = (robotId: string, newStatus: RobotStatus) => { ... }
+   ```
+
+2. **Complex Data Structures**: Robot telemetry involves nested objects (Position, Orientation, Velocity). TypeScript provides autocomplete and validation:
+   ```typescript
+   interface TelemetryUpdate {
+       robotId: string;
+       position: Position;  // { x, y, z }
+       orientation: Orientation;  // { roll, pitch, yaw }
+       velocity: Velocity;  // { vx, vy, vz }
+       battery: number;
+       status: RobotStatus;
+   }
+   ```
+
+3. **Refactoring Confidence**: As requirements evolve (common in zero-to-one products), TypeScript ensures changes propagate correctly across the codebase.
+
+4. **Self-Documenting Code**: Types serve as inline documentation, making the codebase easier for new team members to understand.
+
+**Key TypeScript Files:**
+- `src/types/robot.ts` - Comprehensive type definitions for all robot data structures
+- All hooks and components are fully typed with interfaces
+
+### Custom Hooks: Encapsulating Business Logic
+
+Custom hooks were used to separate business logic from UI components, following React best practices for reusability and testability.
+
+#### `useTelemetry` Hook
+
+**Purpose**: Manages WebSocket connections and real-time telemetry data streaming.
+
+**Why a Custom Hook?**
+- **Reusability**: Used in both `FleetOverviewPage` (all robots) and `RobotDetailPage` (single robot)
+- **Separation of Concerns**: WebSocket logic isolated from UI components
+- **Testability**: Can be tested independently with mock WebSocket connections
+- **State Management**: Handles connection state, reconnection logic, and error handling
+
+**Key Features:**
+```typescript
+const { telemetry, connected, connecting, error, connect, disconnect } = useTelemetry({
+    url: 'ws://localhost:8080',
+    robotId: 'robot-1',  // Optional: filter to specific robot
+    autoConnect: true,
+    reconnect: true,
+    reconnectInterval: 30000
+});
+```
+
+**Implementation Highlights:**
+- Automatic reconnection with exponential backoff
+- Handles multiple robots' telemetry simultaneously
+- Graceful error handling and connection state management
+- Supports filtering to specific robot or all robots
+
+**Location**: `src/hooks/useTelemetry.ts`
+
+#### `useRobotControls` Hook
+
+**Purpose**: Manages robot control actions (start, pause, emergency stop) with UI state (loading, confirmations, notifications).
+
+**Why a Custom Hook?**
+- **Complex State Management**: Combines robot status, loading states, snackbar notifications, and confirmation dialogs
+- **Consistent UX**: Ensures all control actions follow the same pattern (loading → success/error feedback)
+- **Reusability**: Can be used in any component that needs robot controls
+- **Testability**: Business logic separated from UI rendering
+
+**Key Features:**
+```typescript
+const {
+    robotStatus,
+    loading,
+    snackbar,
+    confirmDialog,
+    handlers: { handleStart, handlePause, handleEmergencyStop },
+    closeSnackbar,
+    closeConfirmDialog
+} = useRobotControls({
+    robotId: 'robot-1',
+    initialStatus: 'idle',
+    onStatusChange: (newStatus) => { /* update context */ }
+});
+```
+
+**Implementation Highlights:**
+- Simulates API calls with proper loading states
+- Confirmation dialogs for critical actions (emergency stop, return to dock)
+- Success/error notifications via Material UI Snackbar
+- Callback support for status updates
+
+**Location**: `src/hooks/useRobotControls.ts`
+
+**Testing**: Both hooks have comprehensive test suites (`useTelemetry.test.ts`, `useRobotControls.test.ts`)
+
+### State Management: Context API vs. Redux
+
+**Decision: React Context API**
+
+For this application, React Context API was chosen over Redux or other state management libraries because:
+
+1. **Scope**: The state is relatively simple (robot fleet data, status updates). No need for complex middleware, time-travel debugging, or Redux DevTools.
+
+2. **Performance**: With a small number of robots (typically < 100), Context API performance is sufficient. The state updates are infrequent (status changes, not high-frequency re-renders).
+
+3. **Simplicity**: Context API is built into React, reducing dependencies and complexity.
+
+4. **Future Flexibility**: If the app grows to require Redux features (middleware, complex async flows), migration is straightforward.
+
+**Implementation:**
+
+```typescript
+// src/context/RobotStateContext.tsx
+export const RobotStateProvider = ({ children, initialRobots }) => {
+    const [robots, setRobots] = useState<RobotDetail[]>(initialRobots);
+    
+    const updateRobotStatus = useCallback((robotId: string, newStatus: RobotStatus) => {
+        setRobots(prevRobots =>
+            prevRobots.map(robot =>
+                robot.id === robotId ? { ...robot, status: newStatus } : robot
+            )
+        );
+    }, []);
+    
+    return (
+        <RobotStateContext.Provider value={{ robots, updateRobotStatus, getRobot }}>
+            {children}
+        </RobotStateContext.Provider>
+    );
+};
+```
+
+**Usage Pattern:**
+- Context provides shared robot fleet data
+- Custom hooks (`useTelemetry`, `useRobotControls`) manage their own local state
+- Components combine context data with hook data for rendering
+
+**When Would We Use Redux?**
+- If we needed middleware for API calls, logging, or side effects
+- If state updates became complex (undo/redo, time-travel debugging)
+- If we needed to share state across multiple Electron windows
+- If performance became an issue with many robots (> 100)
+
+### Component Composition
+
+The application uses composition patterns throughout:
+
+1. **Page Components** compose multiple smaller components:
+   ```typescript
+   <FleetOverviewPage>
+       <RobotTableRow />  // Reusable row component
+       <StatusIndicator /> // Reusable status component
+   </FleetOverviewPage>
+   ```
+
+2. **Hooks Composition**: Components compose multiple hooks:
+   ```typescript
+   const { robots } = useRobotState();  // Context
+   const { telemetry } = useTelemetry();  // WebSocket
+   const { handlers } = useRobotControls();  // Controls
+   ```
+
+3. **Material UI Composition**: Uses MUI's composition patterns for consistent styling and behavior.
+
+**Benefits:**
+- **Reusability**: Components can be reused across pages
+- **Testability**: Smaller components are easier to test
+- **Maintainability**: Changes to one component don't affect others
+- **Readability**: Clear separation of concerns
+
+---
+
+## 🛠️ Development Tools & Workflow
+
+### Why Cursor AI?
+
+Cursor was used as the primary development environment for this project because:
+
+1. **Rapid Prototyping**: AI-assisted coding enabled quick iteration on UI patterns and component structure
+2. **TypeScript Assistance**: Cursor's AI understands TypeScript deeply, helping catch type errors early
+3. **Code Generation**: Generated boilerplate for hooks, components, and tests, allowing focus on business logic
+4. **Learning Tool**: When implementing unfamiliar patterns (Electron security, WebSocket reconnection), Cursor provided explanations alongside code
+5. **Time Efficiency**: Built this weekend project in significantly less time than traditional development
+
+**Balance**: While AI assisted with structure and boilerplate, all architectural decisions, business logic, and testing strategies were made manually to ensure understanding and maintainability.
+
+### GitHub Project Management
+
+This project was managed using GitHub Projects to track progress and organize work:
+
+- **Weekend Sprint Planning**: Created issues for major features (Fleet Overview, Robot Detail Page, Telemetry, Electron Setup)
+- **Progress Tracking**: Used project board to visualize completion status
+- **Documentation**: Linked documentation tasks to code implementation
+- **Testing**: Separate issues for test coverage to ensure TDD approach
+
+This demonstrates ability to:
+- Break down work into manageable tasks
+- Track progress systematically
+- Maintain documentation alongside code
+- Use project management tools effectively
+
+---
+
+## 📦 Technology Stack
+
+**Core:**
+- React 19.2.0 + TypeScript 5.9.3
+- Vite 7.2.4 (build tool)
+- React Router v7 (navigation)
+- Material UI 7.3.6 (component library)
+
+**Desktop:**
+- Electron 33.0.0 (desktop app framework)
+- electron-builder (packaging)
+
+**Testing:**
+- Vitest 4.0.15 (test runner)
+- React Testing Library (component testing)
+- jsdom (DOM simulation)
+
+**Development:**
+- ESLint (code quality)
+- TypeScript ESLint (type checking)
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js (v18 or higher recommended)
-- npm or yarn
+- Node.js (v18+)
+- npm
 
-### Installation
+### Installation & Run
 
-1. **Install frontend dependencies:**
+1. **Install dependencies:**
    ```bash
    npm install
+   cd server && npm install && cd ..
    ```
 
-2. **Install telemetry simulator dependencies:**
+2. **Start telemetry simulator (Terminal 1):**
    ```bash
    cd server
-   npm install
-   cd ..
+   npm start
    ```
 
-### Running the Application
+3. **Start frontend (Terminal 2):**
+   ```bash
+   npm run dev
+   ```
 
-The application consists of two parts: the frontend React app and the telemetry simulator server. You'll need to run both for the full experience.
+4. **Or run as Electron desktop app:**
+   ```bash
+   npm run electron:dev
+   ```
 
-#### Option 1: Run Both Services (Recommended)
-
-**Terminal 1 - Start the Telemetry Simulator:**
-```bash
-cd server
-npm start
-```
-
-You should see:
-```
-Telemetry Simulator running on port 8080
-WebSocket endpoint: ws://localhost:8080/
-HTTP API endpoint: http://localhost:8080/api/robots
-HTTP Health Check: http://localhost:8080/health
-```
-
-**Terminal 2 - Start the Frontend:**
-```bash
-npm run dev
-```
-
-The frontend will typically start on `http://localhost:5173` (or another port if 5173 is in use).
-
-#### Option 2: Development Mode with Auto-Reload
-
-For development with auto-reload on file changes:
-
-**Terminal 1 - Telemetry Simulator (with watch):**
-```bash
-cd server
-npm run dev
-```
-
-**Terminal 2 - Frontend (with hot reload):**
-```bash
-npm run dev
-```
-
-### Verifying the Setup
-
-1. **Check Telemetry Simulator:**
-   - Open `http://localhost:8080/health` in your browser - should return `{"status":"ok"}`
-   - Check the terminal for connection logs when clients connect
-
-2. **Check Frontend:**
-   - Open the frontend URL (usually `http://localhost:5173`)
-   - You should see a green banner at the top saying **"Telemetry Simulator Running"** with a pulsing animation
-   - The connection status chip should show **"Live"** in green
-   - Robot data (battery, status, position) should update in real-time
-
-### Running Without the Simulator
-
-If you don't start the telemetry simulator, the frontend will:
-- Display a yellow "Offline" status indicator
-- Show a warning message about using mock data
-- Still function normally with static mock data
-
-### Running as Electron Desktop App
-
-The application can also run as a standalone desktop application using Electron.
-
-**Prerequisites:**
-- Install dependencies: `npm install` (includes Electron dependencies)
-
-**Development Mode (Electron):**
-
-Run the app in Electron with hot reload:
-
-```bash
-npm run electron:dev
-```
-
-This will:
-1. Start the Vite dev server
-2. Compile Electron main process files
-3. Launch Electron window connected to the dev server
-4. Enable hot reload for both React app and Electron
-
-**Note:** You'll still need the telemetry simulator running separately if you want real-time data:
-
-**Terminal 1 - Telemetry Simulator:**
-```bash
-cd server
-npm start
-```
-
-**Terminal 2 - Electron App:**
-```bash
-npm run electron:dev
-```
-
-The Electron window will open and display the React app. DevTools are enabled by default in development mode.
-
-**Building Desktop Applications:**
-
-To create distributable desktop applications:
-
-```bash
-# Build for current platform
-npm run electron:dist
-
-# Build for specific platforms
-npm run electron:dist:mac    # macOS (.dmg, .zip)
-npm run electron:dist:win    # Windows (.exe installer, portable)
-npm run electron:dist:linux  # Linux (.AppImage, .deb)
-
-# Create unpacked directory (for testing)
-npm run electron:pack
-```
-
-Built applications will be in the `release/` directory.
-
-**Note:** 
-- For macOS: You may need to sign the app for distribution (see [electron-builder code signing](https://www.electron.build/code-signing))
-- For Windows: The installer will be created as an NSIS installer
-- For Linux: Both AppImage and .deb packages will be created
-
-**Electron Features:**
-- **Window State Persistence**: The app remembers window size and position between sessions
-- **Application Menu**: Full menu bar with File, Edit, View, Window, and Help menus
-- **Keyboard Shortcuts**:
-  - `Cmd+Q` / `Ctrl+Q`: Quit application
-  - `Cmd+R` / `Ctrl+R`: Reload window
-  - `Cmd+Option+I` / `Ctrl+Shift+I`: Toggle Developer Tools (development only)
-  - `F11` or `View > Toggle Fullscreen`: Enter/exit fullscreen mode
-- **Fullscreen Support**: Toggle fullscreen mode for operator console use
-- **About Dialog**: Access version information via `Help > About Robot Ops Console`
-- **Platform-Specific Behavior**: 
-  - macOS: Window closes to dock (Cmd+Q to quit)
-  - Windows/Linux: Window close quits the application
+The app will be available at `http://localhost:5173` (or the Electron window will open). The telemetry simulator provides live WebSocket data on port 8080.
 
 ---
 
-## 📦 Features (Current POC)
+## 🧪 Testing
 
-### **Fleet Overview**
-- Table of robots with:
-  - Status  
-  - Battery  
-  - Location  
-  - Last heartbeat  
-  - Current task  
-- Clicking a row navigates to that robot’s detail page
-
-### **Robot Detail**
-- Status & health summary  
-- Battery, last heartbeat, active task  
-- Stubbed operator controls:
-  - Start  
-  - Pause  
-  - Resume  
-  - Return to Dock  
-  - Emergency Stop  
-
-### **Real-time Telemetry (with Simulator)**
-- Live position, orientation, and velocity updates
-- Real-time battery level and status changes
-- WebSocket-based streaming data
-- Connection status indicators
-- Automatic reconnection with exponential backoff
-- Fallback to mock data when simulator unavailable
-
-_Note: Without the telemetry simulator running, the app uses static mock data._
-
----
-
-## 🧪 Test-Driven Development (TDD)
-
-Key UI components were developed test-first.
-
-Current test coverage includes:
-
-- Rendering of the fleet overview  
-- Click-through navigation to detail pages  
-- Robot detail rendering from URL route  
-- Handling of invalid robot IDs  
-- Navigation behavior  
-
-Run tests with:
+Built with test-driven development. Run tests with:
 
 ```bash
 npm run test
 npm run test:watch
 ```
 
-For comprehensive testing instructions, see [docs/TESTING.md](docs/TESTING.md).
+**Test Coverage:**
+- Custom hooks (`useTelemetry`, `useRobotControls`)
+- Context providers (`RobotStateContext`)
+- Page components (`FleetOverviewPage`, `RobotDetailPage`)
+
+See [docs/TESTING.md](docs/TESTING.md) for comprehensive testing documentation.
 
 ---
 
-## 🔒 Security Considerations
+## 📚 Documentation
 
-The Electron application implements security best practices:
+- [Executive Summary](EXECUTIVE_SUMMARY.md) - Quick overview for hiring managers
+- [Testing Guide](docs/TESTING.md) - Testing strategies and examples
+- [Electron Desktop App](docs/BUILDING_DESKTOP_APP.md) - Desktop deployment guide
+- [Security Practices](docs/ELECTRON_SECURITY.md) - Electron security implementation
+- [Telemetry Simulator](docs/TELEMETRY_SIMULATOR.md) - WebSocket server documentation
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Study Guide](STUDY_GUIDE.md) - Technical concepts and interview preparation
 
-### **Security Features**
-- **Context Isolation**: Enabled to prevent renderer process from accessing Node.js APIs directly
-- **Node Integration**: Disabled in renderer process for security
-- **Preload Scripts**: Used for secure IPC communication between main and renderer processes
-- **Content Security Policy**: Configured to restrict resource loading
-- **Network Security**: External navigation blocked in production
-- **Certificate Validation**: Strict certificate validation in production
+---
 
-### **Error Handling**
-- Comprehensive error logging (console and file-based in production)
-- User-friendly error messages for critical failures
-- Graceful handling of connection failures
-- Automatic error recovery where possible
+## 🏗️ Building for Production
 
-### **Development vs Production**
-- **Development**: 
-  - DevTools enabled for debugging
-  - Localhost connections allowed
-  - Self-signed certificates allowed for localhost
-  - More permissive CSP for hot reload
-  
-- **Production**:
-  - DevTools disabled
-  - External navigation blocked
-  - Strict certificate validation
-  - Restrictive CSP
-  - Error logs written to `userData/error.log`
+**Desktop Applications:**
+```bash
+npm run electron:dist        # Current platform
+npm run electron:dist:mac    # macOS
+npm run electron:dist:win    # Windows
+npm run electron:dist:linux  # Linux
+```
 
-### **Security Checklist**
-✅ Context isolation enabled  
-✅ Node integration disabled  
-✅ Preload scripts for secure IPC  
-✅ Content Security Policy configured  
-✅ External navigation blocked  
-✅ Certificate validation enabled  
-✅ Error handling implemented  
-✅ Secure window preferences  
+Built applications are output to the `release/` directory.
 
-For more details on Electron security, see the [Electron Security Documentation](https://www.electronjs.org/docs/latest/tutorial/security).
+---
+
+## 🎓 Learning Resources
+
+For a comprehensive guide on the technical concepts used in this project, see [STUDY_GUIDE.md](STUDY_GUIDE.md). It covers:
+- Custom hooks implementation and patterns
+- State management decisions
+- TypeScript benefits and usage
+- Electron architecture
+- Component composition
+- Interview preparation topics
+
+---
+
+## 📧 Sharing This Project
+
+**For Recruiters/Hiring Managers:**
+
+This project demonstrates:
+- **Initiative**: Self-directed exploration of domain-relevant challenges
+- **Technical Depth**: Modern React patterns, real-time data handling, desktop deployment
+- **Product Thinking**: Focus on operator workflows and user experience
+- **Alignment**: Direct relevance to AVF's robotics ventures and zero-to-one product development
+
+**Recommended Sharing:**
+1. **GitHub Repository**: Share the repo link (they can explore code, commits, and project management)
+2. **Electron App** (Optional): If they want to run it locally, provide build instructions or a pre-built binary
+3. **Executive Summary**: Point them to `EXECUTIVE_SUMMARY.md` for a 2-minute overview
+
+See [EMAIL_TEMPLATE.md](EMAIL_TEMPLATE.md) for a ready-to-use email template.
+
+---
+
+*Built with React, TypeScript, and Electron. Demonstrating modern frontend patterns for robotics operations interfaces.*

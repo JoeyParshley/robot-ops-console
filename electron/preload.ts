@@ -1,4 +1,4 @@
-import { contextBridge } from 'electron';
+const { contextBridge } = require('electron');
 
 // Expose protected methods that allow the renderer process to use
 // the APIs in a secure way. This is the recommended approach for
