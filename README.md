@@ -177,6 +177,30 @@ npm run electron:dev
 
 The Electron window will open and display the React app. DevTools are enabled by default in development mode.
 
+**Building Desktop Applications:**
+
+To create distributable desktop applications:
+
+```bash
+# Build for current platform
+npm run electron:dist
+
+# Build for specific platforms
+npm run electron:dist:mac    # macOS (.dmg, .zip)
+npm run electron:dist:win    # Windows (.exe installer, portable)
+npm run electron:dist:linux  # Linux (.AppImage, .deb)
+
+# Create unpacked directory (for testing)
+npm run electron:pack
+```
+
+Built applications will be in the `release/` directory.
+
+**Note:** 
+- For macOS: You may need to sign the app for distribution (see [electron-builder code signing](https://www.electron.build/code-signing))
+- For Windows: The installer will be created as an NSIS installer
+- For Linux: Both AppImage and .deb packages will be created
+
 **Electron Features:**
 - **Window State Persistence**: The app remembers window size and position between sessions
 - **Application Menu**: Full menu bar with File, Edit, View, Window, and Help menus
