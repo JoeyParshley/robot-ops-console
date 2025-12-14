@@ -180,6 +180,166 @@ export const useRobotState = () => {
 - Time-travel debugging needed
 - Large team with established Redux patterns
 
+### What is Middleware?
+
+**Middleware** is code that runs between when an action is dispatched and when it reaches the reducer. It allows you to intercept, modify, or enhance actions before they update state.
+
+**Think of it as:**
+```
+Action Dispatched → Middleware → Reducer → State Updated
+```
+
+**Common Middleware Use Cases:**
+
+1. **API Calls (Redux Thunk/Saga):**
+   - Dispatch an action to fetch data
+   - Middleware makes the API call
+   - Dispatch success/error actions based on result
+   - Reducer updates state with the data
+
+2. **Logging:**
+   - Log every action for debugging
+   - Track state changes over time
+   - Debug production issues
+
+3. **Async Operations:**
+   - Handle promises, async/await
+   - Cancel in-flight requests
+   - Retry failed requests
+
+4. **Side Effects:**
+   - Save to localStorage
+   - Send analytics events
+   - Update external systems
+
+**Example: Without Middleware (Context API):**
+
+```typescript
+// In Context - you handle API calls directly in the component or hook
+const RobotProvider = ({ children }) => {
+    const [robots, setRobots] = useState([]);
+    const [loading, setLoading] = useState(false);
+    
+    const fetchRobots = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/robots');
+            const data = await response.json();
+            setRobots(data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    return (
+        <RobotContext.Provider value={{ robots, loading, fetchRobots }}>
+            {children}
+        </RobotContext.Provider>
+    );
+};
+```
+
+**Problems with this approach:**
+- API logic mixed with state management
+- Hard to test API calls separately
+- Difficult to add retry logic, request cancellation
+- No centralized way to handle all API calls
+- Can't easily add logging, analytics, etc.
+
+**Example: With Middleware (Redux + Redux Thunk):**
+
+```typescript
+// Action creator (returns a function, not an object)
+const fetchRobots = () => {
+    return async (dispatch, getState) => {
+        dispatch({ type: 'FETCH_ROBOTS_START' });
+        
+        try {
+            const response = await fetch('/api/robots');
+            const data = await response.json();
+            dispatch({ type: 'FETCH_ROBOTS_SUCCESS', payload: data });
+        } catch (error) {
+            dispatch({ type: 'FETCH_ROBOTS_ERROR', payload: error.message });
+        }
+    };
+};
+
+// Redux Thunk middleware intercepts the function
+// Makes the API call, then dispatches the actual actions
+// Reducer handles the actions and updates state
+```
+
+**Benefits of middleware:**
+- **Separation of concerns**: API logic separate from state updates
+- **Reusability**: Same middleware can handle all API calls
+- **Testability**: Test API logic independently
+- **Composability**: Chain multiple middleware (logging + API + analytics)
+- **Centralized**: All side effects in one place
+
+**Common Redux Middleware:**
+
+1. **Redux Thunk:**
+   - Allows action creators to return functions (not just objects)
+   - Handles async operations
+   - Most common for API calls
+
+2. **Redux Saga:**
+   - More powerful than Thunk
+   - Uses generators for complex async flows
+   - Better for complex scenarios (cancellation, race conditions)
+
+3. **Redux Logger:**
+   - Logs every action and state change
+   - Great for debugging
+
+4. **Custom Middleware:**
+   - Write your own for specific needs
+   - Example: Analytics tracking, error reporting
+
+**When Do You Need Middleware?**
+
+You need middleware when you have:
+
+1. **Complex Async Flows:**
+   - Multiple API calls that depend on each other
+   - Need to cancel requests
+   - Retry logic with exponential backoff
+   - Race conditions to handle
+
+2. **Side Effects:**
+   - Save to localStorage on every state change
+   - Send analytics events
+   - Sync with external systems
+   - WebSocket connections
+
+3. **Cross-Cutting Concerns:**
+   - Logging all actions
+   - Error handling
+   - Request deduplication
+   - Caching
+
+4. **Complex State Updates:**
+   - Update multiple parts of state from one action
+   - Conditional updates based on current state
+   - Transform data before storing
+
+**For This Project:**
+
+We **don't need middleware** because:
+- API calls are simple (one request at a time)
+- No complex async flows
+- Side effects are minimal
+- State updates are straightforward
+
+We **would need middleware** if:
+- We needed to batch multiple API calls
+- We wanted automatic retry logic for all API calls
+- We needed to log all state changes
+- We had complex async flows (fetch robots → fetch their telemetry → update UI)
+- We wanted to sync state with localStorage automatically
+
 **For This Project:**
 - Chose Context because state is simple (robot fleet data)
 - If we needed API middleware or complex async flows, would migrate to Redux
@@ -211,6 +371,9 @@ A: Split contexts by concern (don't put everything in one context), use `useCall
 
 **Q: When would you migrate from Context to Redux?**
 A: When we need middleware, complex async flows, time-travel debugging, or when performance becomes an issue with many consumers.
+
+**Q: What is middleware and when do you need it?**
+A: Middleware is code that runs between dispatching an action and updating state. It's useful for API calls, logging, async operations, and side effects. In this project, we don't need it because our API calls are simple and handled directly in hooks. We'd need middleware if we had complex async flows, needed automatic retry logic, wanted centralized logging, or had to handle multiple dependent API calls.
 
 ---
 
