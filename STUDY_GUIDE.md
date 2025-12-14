@@ -29,6 +29,51 @@ Custom hooks are JavaScript functions that start with `use` and can call other h
 3. **Testability**: Test logic independently from components
 4. **Readability**: Components focus on rendering, hooks handle logic
 
+### What is Telemetry?
+
+**Telemetry** is the automatic collection and transmission of data from remote or inaccessible sources. In robotics, telemetry refers to real-time sensor data and status information sent from robots to monitoring systems.
+
+**In This Project:**
+Telemetry includes real-time data about each robot's:
+- **Position**: Current location in 3D space (x, y, z coordinates)
+- **Orientation**: How the robot is tilted/rotated (roll, pitch, yaw angles)
+- **Velocity**: Speed and direction of movement (vx, vy, vz)
+- **Battery Level**: Current battery percentage
+- **Status**: Current operational state (idle, active, charging, error)
+- **Heartbeat**: Last time the robot sent a signal (confirms it's alive)
+
+**Why Telemetry Matters:**
+- **Real-time Monitoring**: Operators need to see what robots are doing right now
+- **Safety**: Detect problems immediately (low battery, errors, out of bounds)
+- **Decision Making**: Operators use telemetry to make control decisions
+- **Debugging**: Historical telemetry helps diagnose issues
+
+**How It Works in This Project:**
+1. Robots send telemetry data via WebSocket (real-time, bidirectional)
+2. `useTelemetry` hook receives and processes the data
+3. UI components display the telemetry (position on map, battery gauge, status indicators)
+4. Data updates continuously (typically every 100-500ms)
+
+**Example Telemetry Data Structure:**
+```typescript
+interface TelemetryUpdate {
+    robotId: string;
+    timestamp: string;
+    position: { x: number; y: number; z: number };
+    orientation: { roll: number; pitch: number; yaw: number };
+    velocity: { vx: number; vy: number; vz: number };
+    battery: number; // 0-100
+    status: "idle" | "active" | "charging" | "error";
+    lastHeartbeat: string;
+}
+```
+
+**Interview Talking Points:**
+- Telemetry is real-time sensor data from robots
+- WebSocket is used for continuous, bidirectional communication
+- Operators use telemetry to monitor and control robots
+- Critical for safety and operational awareness
+
 ### Example: `useTelemetry` Hook
 
 **What it does:**
@@ -110,6 +155,9 @@ A: When returning functions that are used as dependencies in other hooks or pass
 
 **Q: How do you test custom hooks?**
 A: Use `renderHook` from React Testing Library, or test them indirectly through components. For `useTelemetry`, we mock WebSocket connections.
+
+**Q: What is telemetry and why is it important?**
+A: Telemetry is real-time sensor data sent from robots (position, orientation, velocity, battery, status). It's critical for operators to monitor robot state, make control decisions, and detect problems immediately. In this project, we use WebSocket for continuous, real-time telemetry streaming.
 
 ---
 
