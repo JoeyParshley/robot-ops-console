@@ -830,6 +830,265 @@ const { telemetry } = useTelemetry();      // WebSocket
 const { handlers } = useRobotControls();   // Controls
 ```
 
+### Hooks Composition Explained
+
+**What is Hooks Composition?**
+
+Hooks composition is the practice of combining multiple custom hooks in a single component to build complex functionality from simpler, reusable pieces. Each hook handles a specific concern, and together they provide all the functionality the component needs.
+
+**Why Compose Hooks?**
+
+1. **Separation of Concerns**: Each hook handles one responsibility
+2. **Reusability**: Hooks can be reused across different components
+3. **Testability**: Each hook can be tested independently
+4. **Readability**: Component code is cleaner and easier to understand
+5. **Maintainability**: Changes to one hook don't affect others
+
+**Pattern: Multiple Hooks in One Component**
+
+```typescript
+// Component composes multiple hooks, each handling a different concern
+const RobotDetailPage = () => {
+    // 1. Router hooks - navigation and URL params
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+    
+    // 2. Context hook - shared robot state
+    const { robots, updateRobotStatus } = useRobotState();
+    
+    // 3. Telemetry hook - real-time WebSocket data
+    const {
+        telemetry: robotTelemetry,
+        connected,
+        connecting,
+        error: telemetryError,
+    } = useTelemetry({
+        robotId: id,
+        autoConnect: true,
+        reconnect: true,
+    });
+    
+    // 4. Controls hook - robot control actions
+    const {
+        robotStatus,
+        loading,
+        handlers,
+        snackbar,
+        confirmDialog,
+    } = useRobotControls({
+        robotId: id || '',
+        initialStatus: foundRobot?.status || 'idle',
+        onStatusChange: (newStatus) => {
+            updateRobotStatus(id, newStatus);
+        },
+    });
+    
+    // Combine data from multiple hooks
+    const robot = {
+        ...foundRobot,
+        status: robotStatus || foundRobot.status,
+        battery: robotTelemetry?.battery ?? foundRobot.battery,
+    };
+    
+    return (/* JSX using all the composed data */);
+};
+```
+
+**Real Example from RobotDetailPage:**
+
+```typescript
+// From src/pages/RobotDetailPage.tsx
+export const RobotDetailPage = () => {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+    
+    // Hook 1: Get robot data from context
+    const { robots, updateRobotStatus } = useRobotState();
+    
+    // Hook 2: Get real-time telemetry via WebSocket
+    const {
+        telemetry: robotTelemetry,
+        connected,
+        connecting,
+        error: telemetryError,
+    } = useTelemetry({
+        robotId: id,
+        url: 'ws://localhost:8080',
+        autoConnect: true,
+        reconnect: true,
+    });
+    
+    // Hook 3: Get control handlers and UI state
+    const {
+        robotStatus,
+        loading,
+        handlers,
+        snackbar,
+        confirmDialog,
+        closeSnackbar,
+        closeConfirmDialog,
+    } = useRobotControls({
+        robotId: id || '',
+        initialStatus: foundRobot?.status || 'idle',
+        onStatusChange: (newStatus) => {
+            if (updateRobotStatus && id) {
+                updateRobotStatus(id, newStatus);
+            }
+        },
+    });
+    
+    // Merge data from multiple hooks
+    const robot = foundRobot ? {
+        ...foundRobot,
+        currentPosition: telemetry?.position ?? foundRobot.currentPosition,
+        battery: telemetry?.battery ?? foundRobot.battery,
+        status: telemetry?.status ?? (robotStatus || foundRobot.status),
+    } : null;
+};
+```
+
+**Real Example from FleetOverviewPage:**
+
+```typescript
+// From src/pages/FleetOverviewPage.tsx
+export const FleetOverviewPage = ({ robots: robotsProp }) => {
+    const navigate = useNavigate();
+    
+    // Single hook for fleet-wide telemetry
+    const {
+        allRobots: telemetryMap,
+        connected,
+        connecting,
+        error: telemetryError,
+    } = useTelemetry({
+        url: 'ws://localhost:8080',
+        autoConnect: true,
+        reconnect: true,
+    });
+    
+    // Merge telemetry with static robot data
+    const robots = robotsProp.map(robot => {
+        const telemetry = telemetryMap.get(robot.id);
+        return telemetry ? {
+            ...robot,
+            battery: telemetry.battery,
+            status: telemetry.status,
+            lastHeartbeat: telemetry.lastHeartbeat,
+        } : robot;
+    });
+};
+```
+
+**Common Hooks Composition Patterns:**
+
+#### 1. Data Fetching + State Management
+```typescript
+const { robots } = useRobotState();           // Static data
+const { telemetry } = useTelemetry();        // Real-time data
+// Combine both sources
+```
+
+#### 2. State + Actions
+```typescript
+const { robots } = useRobotState();          // Read state
+const { handlers } = useRobotControls();    // Actions/commands
+// State and actions work together
+```
+
+#### 3. Multiple Data Sources
+```typescript
+const { robots } = useRobotState();          // From context
+const { telemetry } = useTelemetry();       // From WebSocket
+const { user } = useAuth();                  // From auth context
+// Combine all data sources
+```
+
+#### 4. UI State + Business Logic
+```typescript
+const { loading, error } = useFetch();        // UI state
+const { data } = useRobotState();            // Business data
+const { handlers } = useRobotControls();    // Business logic
+// Separate UI concerns from business logic
+```
+
+**Benefits of This Pattern:**
+
+1. **Single Responsibility**: Each hook does one thing well
+   - `useTelemetry` → WebSocket connection
+   - `useRobotControls` → Control actions
+   - `useRobotState` → Shared state
+
+2. **Easy to Test**: Test each hook independently
+   ```typescript
+   // Test telemetry hook separately
+   test('useTelemetry connects to WebSocket', () => {
+       const { result } = renderHook(() => useTelemetry({}));
+       // Test telemetry logic
+   });
+   
+   // Test controls hook separately
+   test('useRobotControls handles start action', () => {
+       const { result } = renderHook(() => useRobotControls({}));
+       // Test control logic
+   });
+   ```
+
+3. **Reusable Across Components**: Same hooks work in different pages
+   ```typescript
+   // FleetOverviewPage uses useTelemetry
+   const { allRobots } = useTelemetry({});
+   
+   // RobotDetailPage uses same hook with different config
+   const { telemetry } = useTelemetry({ robotId: id });
+   ```
+
+4. **Clear Data Flow**: Easy to see where data comes from
+   ```typescript
+   // Data flow is explicit
+   const robots = useRobotState().robots;        // From context
+   const telemetry = useTelemetry().telemetry;   // From WebSocket
+   const handlers = useRobotControls().handlers; // From controls hook
+   ```
+
+**Composing Hooks with Dependencies:**
+
+Sometimes hooks depend on each other:
+
+```typescript
+const RobotDetailPage = () => {
+    // Step 1: Get robot ID from URL
+    const { id } = useParams<{ id: string }>();
+    
+    // Step 2: Get robot data (depends on id)
+    const { robots } = useRobotState();
+    const foundRobot = robots.find(r => r.id === id);
+    
+    // Step 3: Get telemetry (depends on id)
+    const { telemetry } = useTelemetry({ robotId: id });
+    
+    // Step 4: Get controls (depends on foundRobot)
+    const { handlers } = useRobotControls({
+        robotId: id || '',
+        initialStatus: foundRobot?.status || 'idle',
+    });
+    
+    // Step 5: Combine all data
+    const robot = {
+        ...foundRobot,
+        ...telemetry,
+        status: handlers.robotStatus,
+    };
+};
+```
+
+**Interview Talking Points:**
+
+- **"Hooks composition allows us to build complex functionality from simple, reusable pieces"**
+- **"Each hook handles one concern: `useTelemetry` for WebSocket, `useRobotControls` for actions, `useRobotState` for shared data"**
+- **"This makes components easier to read, test, and maintain"**
+- **"Hooks can be reused across different components with different configurations"**
+- **"The component orchestrates multiple hooks, combining their data and functionality"**
+
 **3. Material UI Composition:**
 ```typescript
 <Paper>
@@ -870,7 +1129,10 @@ A: Build complex components by combining simpler ones. Pass data via props, use 
 A: More flexible, easier to test, and clearer data flow. Inheritance creates tight coupling; composition is loose.
 
 **Q: Give an example of composition in your project.**
-A: `FleetOverviewPage` composes `RobotTableRow` components. Each row is reusable and testable independently. We also compose hooks: `useRobotState` for data, `useTelemetry` for real-time updates.
+A: `FleetOverviewPage` composes `RobotTableRow` components. Each row is reusable and testable independently. We also compose hooks: `useRobotState` for shared robot data, `useTelemetry` for real-time WebSocket updates, and `useRobotControls` for control actions. In `RobotDetailPage`, we compose all three hooks together—the context hook provides static data, the telemetry hook provides real-time updates, and the controls hook handles user actions. This separation makes each piece testable and reusable.
+
+**Q: How does hooks composition work?**
+A: Hooks composition is combining multiple custom hooks in a component. Each hook handles one concern—like `useTelemetry` for WebSocket connections, `useRobotControls` for actions, and `useRobotState` for shared data. The component orchestrates them, combining their return values. This pattern provides separation of concerns, reusability, and testability. For example, `RobotDetailPage` composes router hooks (`useParams`, `useNavigate`), context hooks (`useRobotState`), telemetry hooks (`useTelemetry`), and control hooks (`useRobotControls`) to build the complete functionality.
 
 ---
 
