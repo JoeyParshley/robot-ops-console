@@ -1089,6 +1089,148 @@ const RobotDetailPage = () => {
 - **"Hooks can be reused across different components with different configurations"**
 - **"The component orchestrates multiple hooks, combining their data and functionality"**
 
+### How `useRobotState` Demonstrates Composition
+
+**`useRobotState` itself is built through composition** - it composes built-in React hooks to create a custom state management solution.
+
+#### The Provider: Composing Built-in Hooks
+
+The `RobotStateProvider` component composes multiple built-in hooks:
+
+```typescript
+// From src/context/RobotStateContext.tsx
+export const RobotStateProvider = ({ children, initialRobots }) => {
+    // 1. Compose useState - manages robot array state
+    const [robots, setRobots] = useState<RobotDetail[]>(initialRobots);
+    
+    // 2. Compose useCallback - memoizes update function
+    const updateRobotStatus = useCallback((robotId: string, newStatus: RobotStatus) => {
+        setRobots(prevRobots =>
+            prevRobots.map(robot =>
+                robot.id === robotId ? { ...robot, status: newStatus } : robot
+            )
+        );
+    }, []); // Empty deps - function never changes
+    
+    // 3. Compose useCallback - memoizes getter function
+    const getRobot = useCallback((robotId: string) => {
+        return robots.find(robot => robot.id === robotId);
+    }, [robots]); // Depends on robots
+    
+    // 4. Compose Context.Provider - shares composed state
+    return (
+        <RobotStateContext.Provider value={{ robots, updateRobotStatus, getRobot }}>
+            {children}
+        </RobotStateContext.Provider>
+    );
+};
+```
+
+**Composition Breakdown:**
+
+1. **`useState`** → Manages the robots array state
+2. **`useCallback`** (x2) → Memoizes functions to prevent unnecessary re-renders
+3. **`Context.Provider`** → Shares the composed state with child components
+
+Together, these built-in hooks compose a complete state management solution.
+
+#### The Custom Hook: Composing useContext
+
+The `useRobotState` hook composes `useContext` to access the composed state:
+
+```typescript
+// From src/context/RobotStateContext.tsx
+export const useRobotState = () => {
+    // Compose useContext - accesses the context value
+    const context = useContext(RobotStateContext);
+    
+    // Error handling if used outside provider
+    if (!context) {
+        throw new Error('useRobotState must be used within a RobotStateProvider');
+    }
+    
+    // Return the composed state (robots, updateRobotStatus, getRobot)
+    return context;
+};
+```
+
+**What This Composes:**
+
+- **`useContext`** → Accesses the context value created by the provider
+- **Error handling** → Ensures hook is used correctly
+- **Type safety** → Returns properly typed context value
+
+#### Complete Composition Flow
+
+```
+Built-in Hooks (React)
+    ↓
+    ├─ useState → manages state
+    ├─ useCallback → memoizes functions
+    └─ useContext → accesses context
+    ↓
+Composed in RobotStateProvider
+    ↓
+    ├─ robots (from useState)
+    ├─ updateRobotStatus (from useCallback)
+    └─ getRobot (from useCallback)
+    ↓
+Exposed via Context.Provider
+    ↓
+Accessed via useRobotState (composes useContext)
+    ↓
+Used in Components
+```
+
+#### Why This is Composition
+
+**1. Building Complex from Simple:**
+- Simple: `useState` manages one piece of state
+- Simple: `useCallback` memoizes one function
+- Complex: Together they create a state management system
+
+**2. Separation of Concerns:**
+- `useState` → State management
+- `useCallback` → Performance optimization
+- `useContext` → State sharing
+- Each hook has one job
+
+**3. Reusability:**
+- The composed `useRobotState` can be used in any component
+- Components don't need to know about `useState` or `useCallback`
+- They just call `useRobotState()` and get everything they need
+
+**4. Abstraction:**
+- Components don't see the internal implementation
+- They get a clean API: `{ robots, updateRobotStatus, getRobot }`
+- The complexity is hidden inside the hook
+
+#### Real Usage Example
+
+```typescript
+// Component uses the composed hook
+const RobotDetailPage = () => {
+    // This single hook call composes:
+    // - useState (for robots array)
+    // - useCallback (for updateRobotStatus and getRobot)
+    // - useContext (to access the context)
+    const { robots, updateRobotStatus, getRobot } = useRobotState();
+    
+    // Component doesn't need to know about:
+    // - How state is stored (useState)
+    // - How functions are memoized (useCallback)
+    // - How context works (useContext)
+    // It just uses the composed API
+};
+```
+
+**Interview Talking Points:**
+
+- **"`useRobotState` demonstrates composition because it's built by composing `useState`, `useCallback`, and `useContext`"**
+- **"The provider composes built-in hooks to create state management, and the custom hook composes `useContext` to access it"**
+- **"This abstraction means components don't need to know about the internal implementation - they just use the composed API"**
+- **"Composition allows us to build complex functionality (state management) from simple pieces (built-in hooks)"**
+
 **3. Material UI Composition:**
 ```typescript
 <Paper>
