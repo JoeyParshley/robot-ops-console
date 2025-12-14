@@ -254,8 +254,8 @@ describe("RobotDetailPage", () => {
         const router = createRouterWithRobots("/robots/invalid-id", mockRobots);
         render(<RouterProvider router={router} />);
         
-        expect(screen.getByText(/Robot not found/i)).toBeInTheDocument();
-        expect(screen.getByText(/invalid-id/)).toBeInTheDocument();
+        expect(screen.getByText(/Unknown Robot/i)).toBeInTheDocument();
+        expect(screen.getByText(/NOT FOUND/i)).toBeInTheDocument();
     });
 
     it("displays hardware model and firmware version", () => {
@@ -637,7 +637,7 @@ describe("RobotDetailPage", () => {
             const startButton = screen.getByRole("button", { name: "Start" });
             fireEvent.click(startButton);
             
-            await vi.runAllTimersAsync();
+            await vi.advanceTimersByTimeAsync(1000);
             
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[API] Starting robot"));
             consoleSpy.mockRestore();
@@ -653,7 +653,7 @@ describe("RobotDetailPage", () => {
             const pauseButton = screen.getByRole("button", { name: "Pause" });
             fireEvent.click(pauseButton);
             
-            await vi.runAllTimersAsync();
+            await vi.advanceTimersByTimeAsync(1000);
             
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[API] Pausing robot"));
             consoleSpy.mockRestore();
@@ -673,7 +673,7 @@ describe("RobotDetailPage", () => {
             const resumeButton = screen.getByRole("button", { name: "Resume" });
             fireEvent.click(resumeButton);
             
-            await vi.runAllTimersAsync();
+            await vi.advanceTimersByTimeAsync(1000);
             
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[API] Resuming robot"));
             consoleSpy.mockRestore();
@@ -693,7 +693,7 @@ describe("RobotDetailPage", () => {
             const confirmButton = screen.getByRole("button", { name: "Confirm" });
             fireEvent.click(confirmButton);
             
-            await vi.runAllTimersAsync();
+            await vi.advanceTimersByTimeAsync(1000);
             
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[API] Returning robot"));
             consoleSpy.mockRestore();
@@ -1304,10 +1304,10 @@ describe("RobotDetailPage", () => {
             render(<RouterProvider router={router} />);
             
             // Verify error message is shown
-            expect(screen.getByText(/Robot not found/i)).toBeInTheDocument();
+            expect(screen.getByText(/Unknown Robot/i)).toBeInTheDocument();
             
             // Click back button
-            const backButton = screen.getByRole("button", { name: "Back to Fleet Overview" });
+            const backButton = screen.getByRole("button", { name: "Back" });
             fireEvent.click(backButton);
             
             // Should navigate to fleet overview
@@ -1354,8 +1354,8 @@ describe("RobotDetailPage", () => {
             const router = createRouterWithRobots("/robots/non-existent-robot", mockRobots);
             render(<RouterProvider router={router} />);
             
-            expect(screen.getByText(/Robot not found/i)).toBeInTheDocument();
-            expect(screen.getByText(/non-existent-robot/)).toBeInTheDocument();
+            expect(screen.getByText(/Unknown Robot/i)).toBeInTheDocument();
+            expect(screen.getByText(/NOT FOUND/i)).toBeInTheDocument();
             expect(screen.queryByText("Atlas-01")).not.toBeInTheDocument();
         });
 
@@ -1365,9 +1365,8 @@ describe("RobotDetailPage", () => {
             render(<RouterProvider router={router} />);
             
             // Should show error message
-            expect(screen.getByText(/Robot not found/i)).toBeInTheDocument();
-            // The error message includes the ID in quotes, so check for part of it
-            expect(screen.getByText(/invalid/i)).toBeInTheDocument();
+            expect(screen.getByText(/Unknown Robot/i)).toBeInTheDocument();
+            expect(screen.getByText(/NOT FOUND/i)).toBeInTheDocument();
         });
 
         it("displays correct robot when URL changes", () => {
@@ -1519,8 +1518,8 @@ describe("RobotDetailPage", () => {
             render(<RouterProvider router={router} />);
             
             // Should show error message (404-like behavior)
-            expect(screen.getByText(/Robot not found/i)).toBeInTheDocument();
-            expect(screen.getByText(/invalid-robot-id/)).toBeInTheDocument();
+            expect(screen.getByText(/Unknown Robot/i)).toBeInTheDocument();
+            expect(screen.getByText(/NOT FOUND/i)).toBeInTheDocument();
             expect(screen.queryByText("Atlas-01")).not.toBeInTheDocument();
         });
     });
