@@ -45,8 +45,9 @@ It also serves as preparation for the **Frontend Software Engineer (Web & Local 
 - Vitest + React Testing Library (TDD)
 - JSDOM test environment
 
-### **Planned Enhancements**
-- Node/WebSocket telemetry simulator  
+### **Telemetry Simulator**
+- Node.js WebSocket server for real-time telemetry simulation
+- See `server/` directory and `docs/TELEMETRY_SIMULATOR.md` for details  
 - `useTelemetry(robotId)` streaming hook  
 - Electron-based local deployment  
 - Diagnostics dashboard (health, alerts, logs)

@@ -1,0 +1,23 @@
+{
+  "name": "robot-telemetry-simulator",
+  "version": "1.0.0",
+  "description": "WebSocket-based telemetry simulator for robot fleet",
+  "type": "module",
+  "main": "telemetry-simulator.js",
+  "scripts": {
+    "start": "node telemetry-simulator.js",
+    "dev": "node --watch telemetry-simulator.js"
+  },
+  "keywords": [
+    "websocket",
+    "telemetry",
+    "simulator",
+    "robot"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
+
