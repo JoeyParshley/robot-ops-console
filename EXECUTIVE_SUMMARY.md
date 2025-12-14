@@ -62,16 +62,16 @@ This project directly addresses the interface layer that connects human operator
 ## What to Explore
 
 1. **Code Quality**: Check [`src/hooks/`](src/hooks/) for custom hook implementations
-   - [`useTelemetry.ts`](src/hooks/useTelemetry.ts) - WebSocket real-time data
-   - [`useRobotControls.ts`](src/hooks/useRobotControls.ts) - Robot command handling
-2. **Type Safety**: Review [`src/types/robot.ts`](src/types/robot.ts) for comprehensive type definitions
+   - [`useTelemetry.ts`](src/hooks/useTelemetry.ts#L44-L234) - WebSocket real-time data ([hook definition](src/hooks/useTelemetry.ts#L44-L50), [connection logic](src/hooks/useTelemetry.ts#L115-L169))
+   - [`useRobotControls.ts`](src/hooks/useRobotControls.ts#L25-L175) - Robot command handling ([hook definition](src/hooks/useRobotControls.ts#L25-L40), [action handler example](src/hooks/useRobotControls.ts#L79-L86))
+2. **Type Safety**: Review [`src/types/robot.ts`](src/types/robot.ts#L1-L102) for comprehensive type definitions ([`RobotStatus` union type](src/types/robot.ts#L1), [`Robot` interface](src/types/robot.ts#L23-L33))
 3. **Testing**: See test files for test-driven development examples
    - [`useTelemetry.test.ts`](src/hooks/useTelemetry.test.ts)
    - [`useRobotControls.test.ts`](src/hooks/useRobotControls.test.ts)
    - [`RobotStateContext.test.tsx`](src/context/RobotStateContext.test.tsx)
 4. **Architecture**: Examine how Context API and hooks compose together
-   - [`src/context/RobotStateContext.tsx`](src/context/RobotStateContext.tsx) - State management
-   - [`src/pages/FleetOverviewPage.tsx`](src/pages/FleetOverviewPage.tsx) - Hook composition example
+   - [`src/context/RobotStateContext.tsx`](src/context/RobotStateContext.tsx#L17-L36) - State management ([Provider](src/context/RobotStateContext.tsx#L17-L36), [updateRobotStatus](src/context/RobotStateContext.tsx#L20-L26))
+   - [`src/pages/FleetOverviewPage.tsx`](src/pages/FleetOverviewPage.tsx#L32-L41) - Hook composition example ([useTelemetry usage](src/pages/FleetOverviewPage.tsx#L32-L41))
    - [`src/pages/RobotDetailPage.tsx`](src/pages/RobotDetailPage.tsx) - Multiple hooks in action
 
 ---
