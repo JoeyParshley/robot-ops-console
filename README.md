@@ -49,8 +49,14 @@ It also serves as preparation for the **Frontend Software Engineer (Web & Local 
 - Node.js WebSocket server for real-time telemetry simulation
 - See `server/` directory and `docs/TELEMETRY_SIMULATOR.md` for details  
 - `useTelemetry(robotId)` streaming hook  
-- Electron-based local deployment  
 - Diagnostics dashboard (health, alerts, logs)
+
+### **Desktop Application (Electron)**
+- Standalone desktop application with native window management
+- Window state persistence (remembers size and position)
+- Full application menu with keyboard shortcuts
+- Fullscreen mode support for operator consoles
+- Platform-specific optimizations (macOS, Windows, Linux)
 
 ---
 
@@ -170,6 +176,20 @@ npm run electron:dev
 ```
 
 The Electron window will open and display the React app. DevTools are enabled by default in development mode.
+
+**Electron Features:**
+- **Window State Persistence**: The app remembers window size and position between sessions
+- **Application Menu**: Full menu bar with File, Edit, View, Window, and Help menus
+- **Keyboard Shortcuts**:
+  - `Cmd+Q` / `Ctrl+Q`: Quit application
+  - `Cmd+R` / `Ctrl+R`: Reload window
+  - `Cmd+Option+I` / `Ctrl+Shift+I`: Toggle Developer Tools (development only)
+  - `F11` or `View > Toggle Fullscreen`: Enter/exit fullscreen mode
+- **Fullscreen Support**: Toggle fullscreen mode for operator console use
+- **About Dialog**: Access version information via `Help > About Robot Ops Console`
+- **Platform-Specific Behavior**: 
+  - macOS: Window closes to dock (Cmd+Q to quit)
+  - Windows/Linux: Window close quits the application
 
 ---
 
