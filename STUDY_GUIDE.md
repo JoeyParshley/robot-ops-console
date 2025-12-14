@@ -471,13 +471,256 @@ if (error instanceof Error) {
 }
 ```
 
+### Interface vs. Type: When to Use Each
+
+**The Short Answer:**
+- Use `interface` for object shapes (most common)
+- Use `type` for unions, intersections, and advanced type operations
+
+**Detailed Comparison:**
+
+#### 1. Object Shapes (Both Work, Prefer Interface)
+
+```typescript
+// Both are valid and equivalent for simple objects
+interface Robot {
+    id: string;
+    name: string;
+}
+
+type Robot = {
+    id: string;
+    name: string;
+};
+```
+
+**Why prefer `interface` for objects?**
+- Better error messages
+- Supports declaration merging (useful for extending library types)
+- More idiomatic for object shapes
+- Slightly better performance in some TypeScript versions
+
+#### 2. Union Types (Type Only)
+
+```typescript
+// ✅ TYPE - Union types work
+type RobotStatus = "idle" | "active" | "charging" | "error";
+type ID = string | number;
+type Result<T> = T | Error;
+
+// ❌ INTERFACE - Can't do unions
+interface Status = "idle" | "active";  // Syntax error
+```
+
+**Why `type` for unions?**
+- `interface` can only describe object shapes
+- Union types are a fundamental `type` feature
+- Used extensively in this project for status values
+
+#### 3. Extending/Inheritance
+
+```typescript
+// Interface - uses 'extends' keyword
+interface Robot {
+    id: string;
+    name: string;
+}
+
+interface RobotDetail extends Robot {
+    position: Position;
+    metrics: PerformanceMetrics;
+}
+
+// Type - uses intersection (&)
+type Robot = {
+    id: string;
+    name: string;
+};
+
+type RobotDetail = Robot & {
+    position: Position;
+    metrics: PerformanceMetrics;
+};
+```
+
+**Both work, but `interface` is more readable for inheritance.**
+
+#### 4. Declaration Merging (Interface Only)
+
+```typescript
+// ✅ INTERFACE - Declarations automatically merge
+interface Robot {
+    id: string;
+}
+
+interface Robot {
+    name: string;  // Merges with above
+}
+
+// Now Robot has both id and name
+const robot: Robot = {
+    id: "rbt-001",
+    name: "Robot 1"
+};
+
+// ❌ TYPE - Can't redeclare
+type Robot = { id: string; };
+type Robot = { name: string; };  // Error: Duplicate identifier
+```
+
+**When is declaration merging useful?**
+- Extending library types (e.g., adding properties to `Window`)
+- Augmenting third-party type definitions
+- Building up types incrementally
+
+#### 5. Advanced Type Operations (Type Only)
+
+```typescript
+// ✅ TYPE - Mapped types, conditional types, etc.
+type Readonly<T> = {
+    readonly [P in keyof T]: T[P];
+};
+
+type Optional<T> = {
+    [P in keyof T]?: T[P];
+};
+
+type RobotReadonly = Readonly<Robot>;
+
+// ❌ INTERFACE - Can't do mapped types
+```
+
+**Examples from This Project:**
+
+```typescript
+// TYPE - Union type (from robot.ts)
+export type RobotStatus = "idle" | "active" | "charging" | "error";
+
+// INTERFACE - Object shapes (from robot.ts)
+export interface Robot {
+    id: string;
+    name: string;
+    status: RobotStatus;
+    battery: number;
+}
+
+// INTERFACE - Extending (from robot.ts)
+export interface RobotDetail extends Robot {
+    currentPosition: Position;
+    currentOrientation: Orientation;
+    currentVelocity: Velocity;
+}
+```
+
+**Decision Guide:**
+
+| Use Case | Use `interface` | Use `type` |
+|----------|-----------------|------------|
+| Object shapes | ✅ Preferred | ✅ Works |
+| Union types | ❌ Can't | ✅ Required |
+| Intersection types | ❌ Can't | ✅ Required |
+| Extending types | ✅ `extends` | ✅ `&` operator |
+| Declaration merging | ✅ Supported | ❌ Not supported |
+| Mapped types | ❌ Can't | ✅ Required |
+| Primitive aliases | ❌ Can't | ✅ Required |
+
+**Best Practice:**
+- Default to `interface` for object shapes
+- Use `type` for unions, intersections, and advanced operations
+- Be consistent within a project
+
 ### Interview Questions
 
 **Q: What are the main benefits of TypeScript?**
 A: Type safety (catch errors at compile-time), better IDE support (autocomplete, refactoring), self-documenting code, and easier refactoring.
 
 **Q: When would you use `interface` vs `type`?**
-A: Generally interchangeable. `interface` can be extended and merged. `type` is better for unions and intersections. For this project, used `interface` for object shapes, `type` for unions.
+A: For most cases, they're interchangeable. However, there are key differences:
+
+**When to use `interface`:**
+- **Object shapes** (most common use case)
+- When you need **declaration merging** (multiple declarations combine)
+- When you want to **extend** other interfaces
+- Better error messages in some cases
+
+**When to use `type`:**
+- **Union types** (e.g., `"idle" | "active" | "error"`)
+- **Intersection types** (combining multiple types)
+- **Primitive types** (string, number aliases)
+- **Mapped types** and advanced type operations
+
+**Examples from this project:**
+
+```typescript
+// TYPE - Union type (can't use interface for this)
+type RobotStatus = "idle" | "active" | "charging" | "error";
+
+// INTERFACE - Object shape
+interface Robot {
+    id: string;
+    name: string;
+    status: RobotStatus;
+    battery: number;
+}
+
+// INTERFACE - Can extend other interfaces
+interface RobotDetail extends Robot {
+    currentPosition: Position;
+    metrics: PerformanceMetrics;
+}
+
+// TYPE - Union type (not possible with interface)
+type StatusOrError = RobotStatus | Error;
+
+// TYPE - Intersection type (combining types)
+type RobotWithMetadata = Robot & {
+    metadata: { version: string; };
+};
+```
+
+**Key Differences:**
+
+1. **Declaration Merging** (interface only):
+```typescript
+// Interface - declarations merge
+interface Robot {
+    id: string;
+}
+interface Robot {
+    name: string;  // Merges with above - Robot now has both id and name
+}
+
+// Type - error if you try to redeclare
+type Robot = { id: string; };
+type Robot = { name: string; };  // ❌ Error: Duplicate identifier
+```
+
+2. **Extending** (both work, but interface is more common):
+```typescript
+// Interface - extends keyword
+interface RobotDetail extends Robot {
+    position: Position;
+}
+
+// Type - intersection (same result, different syntax)
+type RobotDetail = Robot & {
+    position: Position;
+};
+```
+
+3. **Union Types** (type only):
+```typescript
+// Type - union works
+type Status = "idle" | "active" | "error";
+
+// Interface - can't do unions
+interface Status = "idle" | "active";  // ❌ Syntax error
+```
+
+**For This Project:**
+- Used `interface` for all object shapes (Robot, Position, TelemetryUpdate, etc.)
+- Used `type` for union types (RobotStatus)
+- This follows common TypeScript conventions
 
 **Q: How does TypeScript help with refactoring?**
 A: When you change a type, TypeScript shows all places that need updating. This prevents bugs and makes refactoring safe.
