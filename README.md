@@ -15,7 +15,7 @@ The goals of this POC are to explore:
 - Navigation between fleet-level and per-robot detail views  
 - UI patterns suitable for **local desktop deployment** (Electron) or web environments  
 
-Live telemetry is available via the WebSocket simulator. Desktop deployment (Electron) is planned next.
+Live telemetry is available via the WebSocket simulator. Desktop deployment via Electron is available (see "Running as Electron Desktop App" below).
 
 ---
 
@@ -134,6 +134,42 @@ If you don't start the telemetry simulator, the frontend will:
 - Display a yellow "Offline" status indicator
 - Show a warning message about using mock data
 - Still function normally with static mock data
+
+### Running as Electron Desktop App
+
+The application can also run as a standalone desktop application using Electron.
+
+**Prerequisites:**
+- Install dependencies: `npm install` (includes Electron dependencies)
+
+**Development Mode (Electron):**
+
+Run the app in Electron with hot reload:
+
+```bash
+npm run electron:dev
+```
+
+This will:
+1. Start the Vite dev server
+2. Compile Electron main process files
+3. Launch Electron window connected to the dev server
+4. Enable hot reload for both React app and Electron
+
+**Note:** You'll still need the telemetry simulator running separately if you want real-time data:
+
+**Terminal 1 - Telemetry Simulator:**
+```bash
+cd server
+npm start
+```
+
+**Terminal 2 - Electron App:**
+```bash
+npm run electron:dev
+```
+
+The Electron window will open and display the React app. DevTools are enabled by default in development mode.
 
 ---
 

@@ -430,13 +430,209 @@ const handleStart = () => {
 
 ---
 
+## Issue #8: Basic Electron Integration (MVP)
+
+**Priority:** High  
+**Type:** Feature  
+**Labels:** `enhancement`, `electron`, `desktop`, `mvp`
+
+### Description
+
+Set up the foundational Electron wrapper to run the Robot Ops Console as a desktop application. This MVP focuses on getting the basic Electron window working with the existing React app, establishing the development workflow, and verifying that all core functionality (navigation, WebSocket connections) works correctly in the Electron context.
+
+### Acceptance Criteria
+
+- [ ] Install Electron and required dependencies (`electron`, `electron-vite` or `vite-plugin-electron`)
+- [ ] Create Electron main process file (`electron/main.ts`)
+- [ ] Create Electron preload script (`electron/preload.ts`) with context isolation
+- [ ] Configure Electron to load from Vite dev server in development (`http://localhost:5173`)
+- [ ] Set up development workflow: `npm run electron:dev` to run Electron with hot reload
+- [ ] Configure basic window (default size 1920x1080, minimum 1280x720)
+- [ ] Set window title: "Robot Ops Console"
+- [ ] Application window opens and displays the React app correctly
+- [ ] React Router navigation works correctly in Electron context
+- [ ] All existing UI components render and function properly
+- [ ] WebSocket connections to telemetry simulator work correctly in Electron
+- [ ] Connection status indicators function correctly
+- [ ] Operator controls function correctly
+- [ ] Test application launch and basic functionality
+- [ ] Test navigation flows work correctly
+- [ ] Test WebSocket connections in Electron context
+- [ ] Update README with basic Electron development instructions
+- [ ] Add Electron build artifacts to `.gitignore` (`out/`, `dist-electron/`)
+
+### Technical Notes
+
+- Use `electron-vite` or `vite-plugin-electron` for seamless Vite integration
+- Enable context isolation and disable `nodeIntegration` for security
+- Use preload script for any IPC communication if needed
+- Load from dev server in development, will handle production build in Issue #9
+- WebSocket should work normally in Electron renderer process
+
+### Related Files
+
+- `package.json` (add Electron dependencies and dev script)
+- `vite.config.ts` (add Electron plugin configuration)
+- `electron/main.ts` (new - main process)
+- `electron/preload.ts` (new - preload script)
+- `README.md` (update with Electron dev instructions)
+- `.gitignore` (add Electron build artifacts)
+
+### Estimated Effort: 3-4 hours
+
+---
+
+## Issue #9: Electron Production Build & Packaging
+
+**Priority:** High  
+**Type:** Feature  
+**Labels:** `enhancement`, `electron`, `build`, `packaging`, `distribution`
+
+### Description
+
+Set up production builds and packaging for the Electron application. This includes configuring the build system to create distributable packages for macOS, Windows, and Linux, ensuring the production build loads correctly from bundled files, and setting up proper application metadata and icons.
+
+### Acceptance Criteria
+
+- [ ] Integrate Electron build with existing Vite build process
+- [ ] Configure Electron to load from `file://` protocol in production (bundled files)
+- [ ] Ensure production Vite build is properly packaged in Electron
+- [ ] Handle Vite asset paths correctly in Electron context
+- [ ] Ensure all static assets (images, fonts, etc.) load correctly in production
+- [ ] Set up `electron-builder` or `electron-forge` for packaging
+- [ ] Configure build for macOS (.app or .dmg)
+- [ ] Configure build for Windows (.exe or installer)
+- [ ] Configure build for Linux (.AppImage, .deb, or .rpm)
+- [ ] Create application icons for all platforms (or placeholder icons)
+- [ ] Set up proper application metadata (name, version, description, author)
+- [ ] Add production build script: `npm run electron:build`
+- [ ] Test production build runs without dev server
+- [ ] Test production build on at least one target platform
+- [ ] Verify no console errors or warnings in production builds
+- [ ] Update README with production build instructions
+
+### Technical Notes
+
+- Use `electron-builder` (recommended) or `electron-forge` for packaging
+- Configure `electron-builder` in `package.json` or separate config file
+- Ensure Vite `base` path is correct for Electron (usually `./`)
+- Test production build thoroughly - file paths work differently than dev server
+- Icons can be placeholders initially, refined in Issue #10
+
+### Related Files
+
+- `package.json` (add electron-builder config and build script)
+- `vite.config.ts` (ensure production build config is correct)
+- `electron/main.ts` (update to handle production file loading)
+- `electron/icons/` (new - application icons)
+- `README.md` (update with build instructions)
+
+### Estimated Effort: 2-3 hours
+
+---
+
+## Issue #10: Electron UX Enhancements
+
+**Priority:** Medium  
+**Type:** Feature  
+**Labels:** `enhancement`, `electron`, `ux`, `menu`, `window-management`
+
+### Description
+
+Enhance the Electron application with polished UX features including window state persistence, application menu, keyboard shortcuts, and improved window management. This makes the desktop application feel native and professional.
+
+### Acceptance Criteria
+
+- [ ] Implement window state persistence (remember size/position on restart)
+- [ ] Handle window close behavior appropriately
+- [ ] Support fullscreen mode (useful for operator consoles)
+- [ ] Prevent window from being resized below minimum dimensions
+- [ ] Set appropriate window background color during loading
+- [ ] Create application menu bar (File, Edit, View, Window, Help)
+- [ ] Add standard menu items:
+  - [ ] File > Quit (with Cmd+Q / Ctrl+Q shortcut)
+  - [ ] View > Reload (for development, Cmd+R / Ctrl+R)
+  - [ ] View > Toggle Developer Tools (for debugging, Cmd+Option+I / Ctrl+Shift+I)
+  - [ ] Window > Minimize, Maximize, Close
+- [ ] Add "About" dialog with version information
+- [ ] Disable or customize menu items appropriately for production builds
+- [ ] Create proper application icons (replace placeholders from Issue #9)
+- [ ] Test window resize, minimize, maximize, close behaviors
+- [ ] Test application menu functionality
+- [ ] Test keyboard shortcuts work correctly
+- [ ] Update documentation with UX features
+
+### Technical Notes
+
+- Use `electron-window-state` or similar for window state persistence
+- Use Electron's `Menu` API for application menu
+- Platform-specific menu items (e.g., macOS app menu)
+- Icons should be in multiple sizes for different platforms
+- Consider using `electron-store` for persistent settings if needed
+
+### Related Files
+
+- `electron/main.ts` (add menu and window state management)
+- `electron/icons/` (create proper icons)
+- `package.json` (may need additional dependencies)
+
+### Estimated Effort: 2-3 hours
+
+---
+
+## Issue #11: Electron Security & Error Handling
+
+**Priority:** Medium  
+**Type:** Feature  
+**Labels:** `enhancement`, `electron`, `security`, `error-handling`, `diagnostics`
+
+### Description
+
+Implement security best practices and robust error handling for the Electron application. This includes ensuring proper security configuration, handling Electron-specific errors gracefully, and providing user-friendly feedback for failures.
+
+### Acceptance Criteria
+
+- [ ] Verify context isolation is enabled (should be done in Issue #8, verify here)
+- [ ] Verify `nodeIntegration` is disabled in renderer (should be done in Issue #8, verify here)
+- [ ] Use preload scripts for any IPC communication
+- [ ] Configure Content Security Policy appropriately
+- [ ] Handle CORS and network security correctly
+- [ ] Run Electron security checklist and address any warnings
+- [ ] Handle Electron-specific errors gracefully
+- [ ] Show user-friendly error messages for critical failures
+- [ ] Handle cases where telemetry simulator is not running
+- [ ] Provide clear feedback when application cannot connect to services
+- [ ] Log errors to console (optional: log to file for diagnostics)
+- [ ] Test error scenarios (connection failures, invalid states)
+- [ ] Verify no security warnings in Electron security checklist
+- [ ] Update documentation with security considerations
+
+### Technical Notes
+
+- Review Electron security best practices: https://www.electronjs.org/docs/latest/tutorial/security
+- Use context isolation (default in modern Electron)
+- Validate all IPC messages if using IPC
+- Consider using `electron-log` for file-based logging if needed
+- Test with Electron's security warnings enabled
+
+### Related Files
+
+- `electron/main.ts` (verify security settings)
+- `electron/preload.ts` (ensure secure IPC if needed)
+- `README.md` (document security considerations)
+
+### Estimated Effort: 1-2 hours
+
+
+---
+
 ## Summary
 
-**Total Issues:** 7
+**Total Issues:** 11
 
 **Priority Breakdown:**
-- High: 3 issues (Router navigation, Enhanced RobotDetailPage, useTelemetry hook)
-- Medium: 3 issues (Mock data, Routing tests, RobotDetailPage tests)
+- High: 5 issues (Router navigation, Enhanced RobotDetailPage, useTelemetry hook, Electron MVP, Electron production build)
+- Medium: 5 issues (Mock data, Routing tests, RobotDetailPage tests, Electron UX, Electron security)
 - Low: 1 issue (Control handlers)
 
 **Estimated Effort:**
@@ -447,6 +643,10 @@ const handleStart = () => {
 - Issue #5: 2-3 hours
 - Issue #6: 2-3 hours
 - Issue #7: 4-5 hours
+- Issue #8: 3-4 hours (Electron MVP)
+- Issue #9: 2-3 hours (Electron production build)
+- Issue #10: 2-3 hours (Electron UX)
+- Issue #11: 1-2 hours (Electron security)
 
-**Total Estimated Time:** 16-21 hours
+**Total Estimated Time:** 24-33 hours
 
