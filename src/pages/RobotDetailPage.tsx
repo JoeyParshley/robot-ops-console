@@ -189,6 +189,53 @@ export const RobotDetailPage = ({
 
     return (
         <Box>
+            {/* Simulator Status Banner */}
+            {connected && (
+                <Alert 
+                    severity="success" 
+                    icon={
+                        <Box
+                            sx={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: '50%',
+                                bgcolor: 'success.main',
+                                animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                                '@keyframes pulse': {
+                                    '0%, 100%': {
+                                        opacity: 1,
+                                    },
+                                    '50%': {
+                                        opacity: 0.5,
+                                    },
+                                },
+                            }}
+                        />
+                    }
+                    sx={{ 
+                        mb: 2,
+                        '& .MuiAlert-icon': {
+                            alignItems: 'center',
+                        },
+                    }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                            <strong>Telemetry Simulator Running</strong> — Receiving live telemetry data for {robot.name}
+                        </Typography>
+                        <Chip
+                            size="small"
+                            label="LIVE"
+                            color="success"
+                            sx={{ 
+                                fontWeight: 'bold',
+                                animation: connected ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none',
+                            }}
+                        />
+                    </Box>
+                </Alert>
+            )}
+
             <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2, flexWrap: 'wrap' }}>
                     <Button variant="outlined" color="primary" onClick={() => navigate('/')}>
