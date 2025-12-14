@@ -15,7 +15,7 @@ The goals of this POC are to explore:
 - Navigation between fleet-level and per-robot detail views  
 - UI patterns suitable for **local desktop deployment** (Electron) or web environments  
 
-All data is currently mocked; live telemetry and desktop deployment are planned next.
+Live telemetry is available via the WebSocket simulator. Desktop deployment (Electron) is planned next.
 
 ---
 
@@ -54,6 +54,89 @@ It also serves as preparation for the **Frontend Software Engineer (Web & Local 
 
 ---
 
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v18 or higher recommended)
+- npm or yarn
+
+### Installation
+
+1. **Install frontend dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Install telemetry simulator dependencies:**
+   ```bash
+   cd server
+   npm install
+   cd ..
+   ```
+
+### Running the Application
+
+The application consists of two parts: the frontend React app and the telemetry simulator server. You'll need to run both for the full experience.
+
+#### Option 1: Run Both Services (Recommended)
+
+**Terminal 1 - Start the Telemetry Simulator:**
+```bash
+cd server
+npm start
+```
+
+You should see:
+```
+Telemetry Simulator running on port 8080
+WebSocket endpoint: ws://localhost:8080/
+HTTP API endpoint: http://localhost:8080/api/robots
+HTTP Health Check: http://localhost:8080/health
+```
+
+**Terminal 2 - Start the Frontend:**
+```bash
+npm run dev
+```
+
+The frontend will typically start on `http://localhost:5173` (or another port if 5173 is in use).
+
+#### Option 2: Development Mode with Auto-Reload
+
+For development with auto-reload on file changes:
+
+**Terminal 1 - Telemetry Simulator (with watch):**
+```bash
+cd server
+npm run dev
+```
+
+**Terminal 2 - Frontend (with hot reload):**
+```bash
+npm run dev
+```
+
+### Verifying the Setup
+
+1. **Check Telemetry Simulator:**
+   - Open `http://localhost:8080/health` in your browser - should return `{"status":"ok"}`
+   - Check the terminal for connection logs when clients connect
+
+2. **Check Frontend:**
+   - Open the frontend URL (usually `http://localhost:5173`)
+   - You should see a green banner at the top saying **"Telemetry Simulator Running"** with a pulsing animation
+   - The connection status chip should show **"Live"** in green
+   - Robot data (battery, status, position) should update in real-time
+
+### Running Without the Simulator
+
+If you don't start the telemetry simulator, the frontend will:
+- Display a yellow "Offline" status indicator
+- Show a warning message about using mock data
+- Still function normally with static mock data
+
+---
+
 ## 📦 Features (Current POC)
 
 ### **Fleet Overview**
@@ -75,7 +158,15 @@ It also serves as preparation for the **Frontend Software Engineer (Web & Local 
   - Return to Dock  
   - Emergency Stop  
 
-_All data is mocked for this early POC._
+### **Real-time Telemetry (with Simulator)**
+- Live position, orientation, and velocity updates
+- Real-time battery level and status changes
+- WebSocket-based streaming data
+- Connection status indicators
+- Automatic reconnection with exponential backoff
+- Fallback to mock data when simulator unavailable
+
+_Note: Without the telemetry simulator running, the app uses static mock data._
 
 ---
 
