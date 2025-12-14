@@ -15,7 +15,7 @@ A real-time monitoring and control interface for tethered flying robots, built a
 - **Test-driven development** with comprehensive test coverage
 - **Modern tooling**: Vite, React Router v7, Material UI
 
-This aligns directly with AVF's mission to develop groundbreaking technologies, showcasing the interface layer that connects human operators to autonomous systems—a critical component for any robotics venture.
+This showcases the interface layer that connects human operators to autonomous systems—a critical component for any robotics venture.
 
 **[📄 Quick Summary for Hiring Manager →](EXECUTIVE_SUMMARY.md)**
 
@@ -366,7 +366,7 @@ This project demonstrates:
 - **Initiative**: Self-directed exploration of domain-relevant challenges
 - **Technical Depth**: Modern React patterns, real-time data handling, desktop deployment
 - **Product Thinking**: Focus on operator workflows and user experience
-- **Alignment**: Direct relevance to AVF's robotics ventures and zero-to-one product development
+- **Alignment**: Direct relevance to robotics operations and zero-to-one product development
 
 **Recommended Sharing:**
 1. **GitHub Repository**: Share the repo link (they can explore code, commits, and project management)

@@ -4,7 +4,7 @@
 
 ## Subject Line Options
 
-- "Following Up: Robot Operations Console Project for AVF"
+- "Following Up: Robot Operations Console Project"
 - "Weekend Project: Robotics Operator Interface Demo"
 - "Following Up on Senior Frontend Engineer Role - Project Demo"
 
@@ -14,9 +14,9 @@
 
 Hi [Recruiter Name],
 
-Thank you for moving forward with my application for the Senior Frontend Engineer role at Alert Venture Foundry. I'm excited about the opportunity to contribute to AVF's mission of developing groundbreaking technologies.
+Thank you for moving forward with my application for the Senior Frontend Engineer role. I'm excited about the opportunity to contribute to developing groundbreaking technologies.
 
-Over the weekend, I built a proof-of-concept application that I believe directly aligns with the type of work I'd be doing at AVF. It's a **Robot Operations Console**—a desktop application for monitoring and controlling tethered flying robots, similar to what I understand AVF's robotics ventures might need.
+Over the weekend, I built a proof-of-concept application that I believe directly aligns with the type of work I'd be doing in this role. It's a **Robot Operations Console**—a desktop application for monitoring and controlling tethered flying robots, similar to what robotics operations might need.
 
 **GitHub Repository**: [Your GitHub Repo URL]
 
@@ -37,7 +37,7 @@ I used GitHub Projects to manage the weekend sprint, and the codebase is fully d
 
 Alternatively, I can provide a pre-built Electron app if that's easier. The code is well-commented and uses TypeScript throughout, so it should be straightforward to explore.
 
-Regarding the salary discussion: I mentioned my requirements were negotiable, and I'm open to discussing a range that works for both AVF and myself. I'm genuinely excited about this role and the opportunity to work with AVF's innovative team.
+Regarding the salary discussion: I mentioned my requirements were negotiable, and I'm open to discussing a range that works for both of us. I'm genuinely excited about this role and the opportunity to work with an innovative team.
 
 I look forward to discussing this project and my fit for the role in more detail during the interview.
 
@@ -50,13 +50,13 @@ Best regards,
 
 Hi [Recruiter Name],
 
-I wanted to share a weekend project I built that I believe aligns with the Senior Frontend Engineer role at AVF: a **Robot Operations Console** for monitoring and controlling tethered flying robots.
+I wanted to share a weekend project I built that I believe aligns with the Senior Frontend Engineer role: a **Robot Operations Console** for monitoring and controlling tethered flying robots.
 
 **GitHub**: [Your GitHub Repo URL]
 
-The project showcases TypeScript, custom React hooks, state management, and Electron desktop deployment—all relevant to the work at AVF. There's an Executive Summary in the repo for a quick overview.
+The project showcases TypeScript, custom React hooks, state management, and Electron desktop deployment—all relevant to modern frontend engineering work. There's an Executive Summary in the repo for a quick overview.
 
-I'm open to discussing salary further and am excited about the opportunity to contribute to AVF's mission.
+I'm open to discussing salary further and am excited about the opportunity to contribute to innovative projects.
 
 Looking forward to the interview!
 

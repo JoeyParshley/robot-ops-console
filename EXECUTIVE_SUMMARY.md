@@ -12,13 +12,13 @@ A desktop application for monitoring and controlling tethered flying robots. Ope
 
 ---
 
-## Why It Matters for AVF
+## Why It Matters
 
 This project directly addresses the interface layer that connects human operators to autonomous systems—a critical component for any robotics venture. It demonstrates:
 
 - **Product Thinking**: Focus on operator workflows and safety-critical UI patterns
 - **Technical Depth**: Modern React patterns, real-time data handling, desktop deployment
-- **Alignment**: Relevant to AVF's mission of developing groundbreaking technologies that improve people's lives
+- **Alignment**: Relevant to developing groundbreaking technologies that improve people's lives
 
 ---
 
