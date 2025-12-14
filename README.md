@@ -246,3 +246,49 @@ npm run test:watch
 ```
 
 For comprehensive testing instructions, see [docs/TESTING.md](docs/TESTING.md).
+
+---
+
+## 🔒 Security Considerations
+
+The Electron application implements security best practices:
+
+### **Security Features**
+- **Context Isolation**: Enabled to prevent renderer process from accessing Node.js APIs directly
+- **Node Integration**: Disabled in renderer process for security
+- **Preload Scripts**: Used for secure IPC communication between main and renderer processes
+- **Content Security Policy**: Configured to restrict resource loading
+- **Network Security**: External navigation blocked in production
+- **Certificate Validation**: Strict certificate validation in production
+
+### **Error Handling**
+- Comprehensive error logging (console and file-based in production)
+- User-friendly error messages for critical failures
+- Graceful handling of connection failures
+- Automatic error recovery where possible
+
+### **Development vs Production**
+- **Development**: 
+  - DevTools enabled for debugging
+  - Localhost connections allowed
+  - Self-signed certificates allowed for localhost
+  - More permissive CSP for hot reload
+  
+- **Production**:
+  - DevTools disabled
+  - External navigation blocked
+  - Strict certificate validation
+  - Restrictive CSP
+  - Error logs written to `userData/error.log`
+
+### **Security Checklist**
+✅ Context isolation enabled  
+✅ Node integration disabled  
+✅ Preload scripts for secure IPC  
+✅ Content Security Policy configured  
+✅ External navigation blocked  
+✅ Certificate validation enabled  
+✅ Error handling implemented  
+✅ Secure window preferences  
+
+For more details on Electron security, see the [Electron Security Documentation](https://www.electronjs.org/docs/latest/tutorial/security).
