@@ -114,18 +114,18 @@ function createMenu() {
         {
           label: 'Reload',
           accelerator: process.platform === 'darwin' ? 'Cmd+R' : 'Ctrl+R',
-          click: (item, focusedWindow) => {
-            if (focusedWindow) {
-              focusedWindow.reload();
+          click: () => {
+            if (mainWindow) {
+              mainWindow.reload();
             }
           },
         },
         {
           label: 'Toggle Developer Tools',
           accelerator: process.platform === 'darwin' ? 'Cmd+Option+I' : 'Ctrl+Shift+I',
-          click: (item, focusedWindow) => {
-            if (focusedWindow) {
-              focusedWindow.webContents.toggleDevTools();
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.toggleDevTools();
             }
           },
         },
