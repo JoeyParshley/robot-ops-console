@@ -1561,6 +1561,209 @@ Performance optimization is critical for real-time applications like the Robot O
 
 ### React Rendering Optimizations
 
+#### What is a Memoized Component?
+
+**Definition:**
+
+A **memoized component** is a React component wrapped with `React.memo()` that only re-renders when its props actually change. It "remembers" the previous render result and reuses it if props are the same.
+
+**Think of it like this:**
+- **Normal component**: Re-renders every time the parent re-renders (even if props didn't change)
+- **Memoized component**: "Smart" component that checks if props changed before re-rendering
+
+**Simple Analogy:**
+
+Imagine you're a chef making the same dish:
+- **Normal component**: You remake the dish every time, even if the order is identical
+- **Memoized component**: You check if the order is the same as last time, and if so, you reuse the previous dish
+
+**Basic Example:**
+
+```typescript
+// Normal component - re-renders every time parent renders
+const RobotCard = ({ robot }) => {
+    console.log('RobotCard rendering'); // Logs every time parent renders
+    return <div>{robot.name}</div>;
+};
+
+// Memoized component - only re-renders if props change
+const RobotCard = React.memo(({ robot }) => {
+    console.log('RobotCard rendering'); // Only logs when robot prop changes
+    return <div>{robot.name}</div>;
+});
+```
+
+**How React.memo Works:**
+
+1. **First Render**: Component renders normally
+2. **Parent Re-renders**: React.memo compares new props with previous props
+3. **Props Same?** → Skip re-render, reuse previous result ✅
+4. **Props Different?** → Re-render component ❌
+
+**What "Shallow Comparison" Means:**
+
+React.memo does a **shallow comparison** of props:
+
+```typescript
+// Shallow comparison checks:
+prevProps.robot === nextProps.robot  // Same object reference?
+prevProps.onSelect === nextProps.onSelect  // Same function reference?
+
+// If all props are the same (by reference), skip re-render
+// If any prop is different, re-render
+```
+
+**Important:** It compares **references**, not values:
+
+```typescript
+// These are considered DIFFERENT (different object references):
+const robot1 = { id: '1', name: 'Robot 1' };
+const robot2 = { id: '1', name: 'Robot 1' }; // Same values, but new object
+
+// These are considered SAME (same object reference):
+const robot = { id: '1', name: 'Robot 1' };
+// Using same robot object
+```
+
+**Visual Example:**
+
+```typescript
+// Parent component
+const RobotList = ({ robots }) => {
+    const [selected, setSelected] = useState(null);
+    
+    return (
+        <div>
+            <button onClick={() => setSelected('something')}>
+                Select
+            </button>
+            {robots.map(robot => (
+                <RobotCard key={robot.id} robot={robot} />
+            ))}
+        </div>
+    );
+};
+
+// Without React.memo:
+// - User clicks button → selected state changes
+// - RobotList re-renders
+// - All RobotCard components re-render (even though robot props didn't change) ❌
+
+// With React.memo:
+// - User clicks button → selected state changes
+// - RobotList re-renders
+// - React.memo checks: robot prop hasn't changed
+// - RobotCard components skip re-render ✅
+```
+
+**When to Use Memoized Components:**
+
+✅ **Use React.memo when:**
+- Component renders frequently with same props
+- Component is expensive to render (complex calculations, many children)
+- Parent re-renders often but props don't change
+- Component is in a list and parent state changes affect other items
+
+❌ **Don't use React.memo when:**
+- Component always receives new props (memo won't help)
+- Component is cheap to render (overhead not worth it)
+- Props are objects/arrays recreated every render (memo won't help)
+- You haven't measured performance issues
+
+**Example: When Memoization Helps**
+
+```typescript
+// Parent re-renders frequently (e.g., every 100ms from WebSocket)
+const FleetOverviewPage = () => {
+    const [selectedId, setSelectedId] = useState(null);
+    const { robots } = useTelemetry(); // Updates frequently
+    
+    return (
+        <div>
+            {robots.map(robot => (
+                <RobotCard 
+                    key={robot.id} 
+                    robot={robot}  // robot object reference stays same
+                    isSelected={robot.id === selectedId}
+                />
+            ))}
+        </div>
+    );
+};
+
+// Memoized - only re-renders when robot or isSelected changes
+const RobotCard = React.memo(({ robot, isSelected }) => {
+    // Expensive rendering logic
+    return <ComplexRobotDisplay robot={robot} selected={isSelected} />;
+});
+```
+
+**Example: When Memoization Doesn't Help**
+
+```typescript
+// Parent always creates new objects
+const RobotList = ({ robots }) => {
+    return robots.map(robot => (
+        <RobotCard 
+            key={robot.id}
+            robot={{ ...robot, timestamp: Date.now() }}  // New object every render!
+        />
+    ));
+};
+
+// Memoization won't help - robot prop is always a new object
+const RobotCard = React.memo(({ robot }) => {
+    return <div>{robot.name}</div>;
+});
+// React.memo sees: prevProps.robot !== nextProps.robot (different references)
+// So it re-renders anyway - memoization is useless here
+```
+
+**Custom Comparison Function:**
+
+You can provide a custom comparison function for more control:
+
+```typescript
+const RobotCard = React.memo(({ robot, onSelect }) => {
+    return <div onClick={() => onSelect(robot.id)}>{robot.name}</div>;
+}, (prevProps, nextProps) => {
+    // Custom comparison - return true if props are equal (skip re-render)
+    // Return false if props are different (re-render)
+    
+    // Only compare what matters
+    return prevProps.robot.id === nextProps.robot.id &&
+           prevProps.robot.status === nextProps.robot.status;
+    // Ignore other changes (like robot.name if it doesn't affect rendering)
+});
+```
+
+**Common Misconceptions:**
+
+1. **"Memoization prevents ALL re-renders"** ❌
+   - No, it only prevents re-renders when props are the same
+   - Component still re-renders if props change or state changes
+
+2. **"I should memoize everything"** ❌
+   - No, memoization has overhead (comparison cost)
+   - Only use when you've measured a performance benefit
+
+3. **"Memoization works with new objects"** ❌
+   - No, shallow comparison checks references
+   - New objects = different references = re-render anyway
+
+4. **"Memoization is the same as useMemo"** ❌
+   - `React.memo` memoizes component renders
+   - `useMemo` memoizes computed values
+   - Different purposes
+
+**Summary:**
+
+- **Memoized component** = Component wrapped with `React.memo()`
+- **Purpose** = Skip re-renders when props haven't changed
+- **How it works** = Shallow comparison of prop references
+- **When to use** = Expensive components with stable props
+- **Key requirement** = Props must have stable references (use `useCallback`, `useMemo`)
+
 #### 1. React.memo - Prevent Unnecessary Re-renders
 
 **What it does:**
@@ -1719,6 +1922,391 @@ const RobotList = ({ robots }) => {
 - `useCallback` prevents function recreation, helping `React.memo` work
 - Only useful if the function is passed to a memoized component
 - Use functional updates (`setState(prev => ...)`) to avoid dependencies
+
+### Deep Dive: useCallback, React.memo, and Functional Updates
+
+#### 1. How useCallback Prevents Function Recreation
+
+**The Problem: Function Recreation**
+
+Every time a component re-renders, functions defined inside it are recreated:
+
+```typescript
+// BAD - Function recreated on every render
+const RobotList = ({ robots }) => {
+    const [selected, setSelected] = useState(new Set());
+    
+    // This function is recreated every time RobotList renders
+    const handleSelect = (robotId) => {
+        setSelected(prev => {
+            const next = new Set(prev);
+            if (next.has(robotId)) {
+                next.delete(robotId);
+            } else {
+                next.add(robotId);
+            }
+            return next;
+        });
+    };
+    
+    return robots.map(robot => (
+        <RobotCard 
+            key={robot.id} 
+            robot={robot} 
+            onSelect={handleSelect}  // New function reference every render
+        />
+    ));
+};
+```
+
+**Why This Matters:**
+
+Even if `robot` hasn't changed, `RobotCard` receives a new `onSelect` function reference. If `RobotCard` is memoized with `React.memo`, it will still re-render because the prop reference changed.
+
+**The Solution: useCallback**
+
+```typescript
+// GOOD - Function reference stays the same
+const RobotList = ({ robots }) => {
+    const [selected, setSelected] = useState(new Set());
+    
+    // Function reference only changes if dependencies change
+    const handleSelect = useCallback((robotId) => {
+        setSelected(prev => {
+            const next = new Set(prev);
+            if (next.has(robotId)) {
+                next.delete(robotId);
+            } else {
+                next.add(robotId);
+            }
+            return next;
+        });
+    }, []); // Empty deps - function never changes
+    
+    return robots.map(robot => (
+        <RobotCard 
+            key={robot.id} 
+            robot={robot} 
+            onSelect={handleSelect}  // Same function reference
+        />
+    ));
+};
+```
+
+**How It Works:**
+
+1. First render: `useCallback` creates the function and stores it
+2. Subsequent renders: `useCallback` returns the same function reference (if deps unchanged)
+3. `React.memo` sees the same function reference → skips re-render
+
+#### 2. How useCallback Helps React.memo Work
+
+**React.memo Comparison:**
+
+`React.memo` does a **shallow comparison** of props:
+
+```typescript
+// React.memo internally does something like:
+if (prevProps.robot === nextProps.robot && 
+    prevProps.onSelect === nextProps.onSelect) {
+    // Props are the same, skip re-render
+    return prevComponentInstance;
+}
+// Props changed, re-render
+```
+
+**The Problem Without useCallback:**
+
+```typescript
+// Parent component
+const RobotList = ({ robots }) => {
+    // handleSelect is recreated every render
+    const handleSelect = (robotId) => { /* ... */ };
+    
+    return robots.map(robot => (
+        <RobotCard 
+            robot={robot} 
+            onSelect={handleSelect}  // New reference every time
+        />
+    ));
+};
+
+// Child component (memoized)
+const RobotCard = React.memo(({ robot, onSelect }) => {
+    return <div onClick={() => onSelect(robot.id)}>{robot.name}</div>;
+});
+```
+
+**What Happens:**
+
+1. Parent renders → creates new `handleSelect` function
+2. Parent passes new `handleSelect` to `RobotCard`
+3. `React.memo` compares: `prevProps.onSelect !== nextProps.onSelect` (different references!)
+4. `React.memo` says "props changed" → re-renders `RobotCard` ❌
+
+**The Solution With useCallback:**
+
+```typescript
+// Parent component
+const RobotList = ({ robots }) => {
+    // handleSelect reference stays the same
+    const handleSelect = useCallback((robotId) => { /* ... */ }, []);
+    
+    return robots.map(robot => (
+        <RobotCard 
+            robot={robot} 
+            onSelect={handleSelect}  // Same reference
+        />
+    ));
+};
+
+// Child component (memoized)
+const RobotCard = React.memo(({ robot, onSelect }) => {
+    return <div onClick={() => onSelect(robot.id)}>{robot.name}</div>;
+});
+```
+
+**What Happens:**
+
+1. Parent renders → `useCallback` returns same `handleSelect` reference
+2. Parent passes same `handleSelect` to `RobotCard`
+3. `React.memo` compares: `prevProps.onSelect === nextProps.onSelect` (same reference!)
+4. `React.memo` says "props unchanged" → skips re-render ✅
+
+**Visual Example:**
+
+```typescript
+// Render 1
+const handleSelect1 = useCallback(() => {}, []); // Creates function A
+<RobotCard onSelect={handleSelect1} /> // Reference: A
+
+// Render 2 (parent re-renders, but deps unchanged)
+const handleSelect2 = useCallback(() => {}, []); // Returns same function A
+<RobotCard onSelect={handleSelect2} /> // Reference: A (same!)
+
+// React.memo sees: A === A → skip re-render ✅
+
+// Without useCallback:
+// Render 1
+const handleSelect1 = () => {}; // Creates function A
+<RobotCard onSelect={handleSelect1} /> // Reference: A
+
+// Render 2
+const handleSelect2 = () => {}; // Creates function B (new!)
+<RobotCard onSelect={handleSelect2} /> // Reference: B (different!)
+
+// React.memo sees: A !== B → re-render ❌
+```
+
+#### 3. When useCallback is Actually Useful
+
+**Important: useCallback is only useful in specific scenarios**
+
+**Scenario 1: Function Passed to Memoized Component** ✅
+
+```typescript
+// GOOD - useCallback helps here
+const RobotList = ({ robots }) => {
+    const handleSelect = useCallback((id) => {
+        // ...
+    }, []);
+    
+    return robots.map(robot => (
+        <RobotCard 
+            robot={robot} 
+            onSelect={handleSelect}  // Passed to memoized component
+        />
+    ));
+};
+
+const RobotCard = React.memo(({ robot, onSelect }) => {
+    // Memoized - useCallback prevents unnecessary re-renders
+});
+```
+
+**Scenario 2: Function Used as Dependency in Other Hooks** ✅
+
+```typescript
+// GOOD - useCallback helps here
+const RobotList = ({ robots }) => {
+    const handleSelect = useCallback((id) => {
+        // ...
+    }, [robots]); // Depends on robots
+    
+    useEffect(() => {
+        // Some effect that uses handleSelect
+        console.log('handleSelect changed');
+    }, [handleSelect]); // handleSelect is a dependency
+    // Without useCallback, this effect would run on every render
+};
+```
+
+**Scenario 3: Function Not Passed to Memoized Component** ❌
+
+```typescript
+// BAD - useCallback doesn't help here
+const RobotList = ({ robots }) => {
+    const handleSelect = useCallback((id) => {
+        // ...
+    }, []); // Unnecessary - RobotCard is not memoized
+    
+    return robots.map(robot => (
+        <RobotCard 
+            robot={robot} 
+            onSelect={handleSelect}  // RobotCard will re-render anyway
+        />
+    ));
+};
+
+const RobotCard = ({ robot, onSelect }) => {
+    // Not memoized - will re-render when parent re-renders
+    // useCallback doesn't help here
+};
+```
+
+**When NOT to Use useCallback:**
+
+1. **Function not passed as prop** - If the function is only used locally
+2. **Child component not memoized** - If `RobotCard` isn't wrapped in `React.memo`
+3. **Dependencies change frequently** - If deps change often, `useCallback` recreates anyway
+4. **Simple functions** - The overhead of `useCallback` might be worse than just recreating
+
+**Example of Unnecessary useCallback:**
+
+```typescript
+// BAD - Unnecessary useCallback
+const RobotList = ({ robots }) => {
+    const handleClick = useCallback(() => {
+        console.log('Clicked'); // Simple function, no dependencies
+    }, []);
+    
+    // handleClick is only used locally, not passed to memoized component
+    return (
+        <div onClick={handleClick}>
+            {robots.map(robot => <RobotCard key={robot.id} robot={robot} />)}
+        </div>
+    );
+};
+// RobotCard is not memoized, so useCallback doesn't help
+```
+
+#### 4. Functional Updates to Avoid Dependencies
+
+**The Problem: Dependencies in useCallback**
+
+Sometimes you need to use state or props in your callback, which requires adding them as dependencies:
+
+```typescript
+// BAD - Requires 'count' in dependencies
+const Counter = () => {
+    const [count, setCount] = useState(0);
+    
+    const increment = useCallback(() => {
+        setCount(count + 1); // Uses 'count' - must be in deps
+    }, [count]); // Recreates every time count changes
+    
+    return <button onClick={increment}>Count: {count}</button>;
+};
+```
+
+**Problem:** Every time `count` changes, `increment` is recreated, which defeats the purpose of `useCallback` if you're trying to keep a stable reference.
+
+**The Solution: Functional Updates**
+
+```typescript
+// GOOD - No dependencies needed
+const Counter = () => {
+    const [count, setCount] = useState(0);
+    
+    const increment = useCallback(() => {
+        setCount(prevCount => prevCount + 1); // Functional update
+    }, []); // Empty deps - function never changes!
+    
+    return <button onClick={increment}>Count: {count}</button>;
+};
+```
+
+**How Functional Updates Work:**
+
+```typescript
+// Instead of:
+setCount(count + 1); // Uses current 'count' value
+
+// Use:
+setCount(prevCount => prevCount + 1); // React passes current value
+```
+
+React calls your function with the current state value, so you don't need to capture it in the closure.
+
+**Real Example from This Project:**
+
+```typescript
+// From RobotStateContext.tsx
+export const RobotStateProvider = ({ children, initialRobots }) => {
+    const [robots, setRobots] = useState<RobotDetail[]>(initialRobots);
+    
+    // GOOD - Functional update avoids 'robots' dependency
+    const updateRobotStatus = useCallback((robotId: string, newStatus: RobotStatus) => {
+        setRobots(prevRobots =>  // React passes current robots
+            prevRobots.map(robot =>
+                robot.id === robotId ? { ...robot, status: newStatus } : robot
+            )
+        );
+    }, []); // Empty deps - function never changes!
+    
+    // If we used robots directly, we'd need:
+    // }, [robots]); // Would recreate every time robots changes
+};
+```
+
+**Benefits of Functional Updates:**
+
+1. **Stable Function Reference**: Empty dependency array means function never changes
+2. **Always Current Value**: React ensures you get the latest state
+3. **Better Performance**: Fewer function recreations
+4. **Avoids Stale Closures**: No risk of using old state values
+
+**When to Use Functional Updates:**
+
+✅ **Use functional updates when:**
+- Updating state based on previous state
+- Want to avoid dependencies in `useCallback`
+- Need stable function references for `React.memo`
+
+❌ **Don't use functional updates when:**
+- Setting state to a specific value (not based on previous)
+- Need to use other values (props, other state) in the update
+
+**Example: When NOT to Use Functional Update**
+
+```typescript
+// BAD - Functional update not appropriate here
+const RobotCard = ({ robot, onUpdate }) => {
+    const [status, setStatus] = useState(robot.status);
+    
+    const handleUpdate = useCallback(() => {
+        // We need 'robot' prop, can't use functional update
+        setStatus(robot.status); // Setting to specific value
+        onUpdate(robot.id, robot.status); // Uses 'robot' prop
+    }, [robot, onUpdate]); // Must include dependencies
+};
+```
+
+**Summary:**
+
+1. **useCallback prevents function recreation** → Same function reference across renders
+2. **Helps React.memo work** → Memoized components see same prop references
+3. **Only useful when** → Function passed to memoized component or used as hook dependency
+4. **Functional updates** → Avoid dependencies by using `setState(prev => ...)` pattern
+5. **Result** → Stable function references, fewer re-renders, better performance
+
+**Interview Talking Points:**
+
+- **"useCallback prevents function recreation by returning the same function reference when dependencies don't change"**
+- **"This helps React.memo work because memoized components compare prop references - same reference means skip re-render"**
+- **"useCallback is only useful if the function is passed to a memoized component or used as a dependency in other hooks"**
+- **"Functional updates (setState(prev => ...)) let us avoid dependencies in useCallback, keeping function references stable"**
+- **"In RobotStateContext, we use functional updates in updateRobotStatus so the function never needs to be recreated"**
 
 #### 4. Virtualization - Render Only Visible Items
 
@@ -2406,8 +2994,11 @@ Use this checklist when optimizing:
 
 ### Interview Questions
 
+**Q: What is a memoized component?**
+A: A memoized component is wrapped with `React.memo()` and only re-renders when its props actually change. It does a shallow comparison of prop references - if props are the same, it reuses the previous render result. This prevents unnecessary re-renders when the parent updates but props haven't changed. It's useful for expensive components that receive stable props.
+
 **Q: When would you use `React.memo`?**
-A: When a component receives the same props frequently but the parent re-renders often. Measure first to confirm it helps. Not needed if props change every render.
+A: When a component receives the same props frequently but the parent re-renders often. Measure first to confirm it helps. Not needed if props change every render. Also useful for components in lists where parent state changes affect other items, or expensive components that render frequently.
 
 **Q: What's the difference between `useMemo` and `useCallback`?**
 A: `useMemo` memoizes a value (result of computation), `useCallback` memoizes a function (function reference). Both prevent recreation when dependencies don't change.
