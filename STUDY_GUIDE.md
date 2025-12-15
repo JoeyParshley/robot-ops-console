@@ -159,6 +159,266 @@ A: Use `renderHook` from React Testing Library, or test them indirectly through 
 **Q: What is telemetry and why is it important?**
 A: Telemetry is real-time sensor data sent from robots (position, orientation, velocity, battery, status). It's critical for operators to monitor robot state, make control decisions, and detect problems immediately. In this project, we use WebSocket for continuous, real-time telemetry streaming.
 
+### Understanding Stale Closures
+
+**What is a Stale Closure?**
+
+A **stale closure** occurs when a function captures an old value of a variable from an outer scope, instead of the current value. This is a common bug in React hooks, especially with `useEffect`, `useCallback`, and `useMemo`.
+
+**The Problem:**
+
+When you create a closure (a function that references variables from an outer scope), it "captures" the values at the time it was created. If those values change later, but the closure still references the old values, you have a stale closure.
+
+**Simple Example:**
+
+```typescript
+// BAD - Stale closure
+const Counter = () => {
+    const [count, setCount] = useState(0);
+    
+    useEffect(() => {
+        const interval = setInterval(() => {
+            console.log(count); // Always logs 0! (stale closure)
+            setCount(count + 1); // Always sets to 1! (stale closure)
+        }, 1000);
+        
+        return () => clearInterval(interval);
+    }, []); // Empty deps - closure never updates
+    
+    return <div>{count}</div>;
+};
+```
+
+**Why This Happens:**
+
+1. `useEffect` runs once (empty dependency array `[]`)
+2. The closure captures `count = 0` when created
+3. Even when `count` updates to 1, 2, 3..., the closure still sees `count = 0`
+4. The closure is "stale" - it has old data
+
+**The Fix: Functional Updates**
+
+```typescript
+// GOOD - Functional update avoids stale closure
+const Counter = () => {
+    const [count, setCount] = useState(0);
+    
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCount(prevCount => prevCount + 1); // Uses latest value
+        }, 1000);
+        
+        return () => clearInterval(interval);
+    }, []); // Empty deps OK - using functional update
+    
+    return <div>{count}</div>;
+};
+```
+
+**Or Include Dependencies:**
+
+```typescript
+// GOOD - Include dependencies
+const Counter = () => {
+    const [count, setCount] = useState(0);
+    
+    useEffect(() => {
+        const interval = setInterval(() => {
+            console.log(count); // Always has latest value
+            setCount(count + 1);
+        }, 1000);
+        
+        return () => clearInterval(interval);
+    }, [count]); // Recreate closure when count changes
+    
+    return <div>{count}</div>;
+};
+```
+
+**Real Example from This Project:**
+
+In `useTelemetry`, we avoid stale closures by using refs:
+
+```typescript
+// From useTelemetry.ts - Avoiding stale closures
+const connect = useCallback(() => {
+    // ... WebSocket setup ...
+    
+    ws.onclose = (event) => {
+        // BAD - Would be stale closure if we used reconnect directly
+        // reconnect(); // ❌ Might use old reconnect value
+        
+        // GOOD - Use ref to get current value
+        if (shouldReconnectRef.current && event.code !== 1000) {
+            // shouldReconnectRef.current always has latest value
+            reconnectTimeoutRef.current = setTimeout(() => {
+                reconnectAttemptsRef.current++;
+                connect(); // Recursive call uses latest connect function
+            }, delay);
+        }
+    };
+}, [url, processMessage, reconnectInterval]);
+```
+
+**Common Stale Closure Patterns:**
+
+#### 1. Missing Dependencies in useEffect
+
+```typescript
+// BAD - Stale closure
+const RobotList = ({ robots }) => {
+    const [filter, setFilter] = useState('');
+    
+    useEffect(() => {
+        // filter is stale - always sees initial value ''
+        const filtered = robots.filter(r => r.name.includes(filter));
+        console.log(filtered); // Always uses filter = ''
+    }, []); // Missing 'filter' and 'robots' in deps
+    
+    return <div>...</div>;
+};
+
+// GOOD - Include dependencies
+useEffect(() => {
+    const filtered = robots.filter(r => r.name.includes(filter));
+    console.log(filtered); // Always has latest values
+}, [robots, filter]); // All dependencies included
+```
+
+#### 2. Stale Closure in useCallback
+
+```typescript
+// BAD - Stale closure
+const RobotCard = ({ robot, onUpdate }) => {
+    const [status, setStatus] = useState(robot.status);
+    
+    const handleClick = useCallback(() => {
+        // robot is stale - always sees initial robot value
+        onUpdate(robot.id, status); // robot might be outdated
+    }, []); // Missing 'robot' and 'status' in deps
+    
+    return <div onClick={handleClick}>...</div>;
+};
+
+// GOOD - Include dependencies
+const handleClick = useCallback(() => {
+    onUpdate(robot.id, status); // Always has latest values
+}, [robot, status, onUpdate]); // All dependencies included
+
+// BETTER - Use functional update if possible
+const handleClick = useCallback(() => {
+    setStatus(prevStatus => {
+        onUpdate(robot.id, prevStatus); // prevStatus is always current
+        return prevStatus;
+    });
+}, [robot, onUpdate]); // status not needed with functional update
+```
+
+#### 3. Stale Closure in Event Handlers
+
+```typescript
+// BAD - Stale closure
+const RobotControls = ({ robotId }) => {
+    const [count, setCount] = useState(0);
+    
+    const handleStart = () => {
+        // count is stale - always sees initial value 0
+        console.log(`Starting robot ${robotId} with count ${count}`);
+        // count is always 0, even if state updated
+    };
+    
+    return <button onClick={handleStart}>Start</button>;
+};
+
+// GOOD - Use functional update or include in handler
+const handleStart = () => {
+    setCount(prevCount => {
+        console.log(`Starting robot ${robotId} with count ${prevCount}`);
+        return prevCount;
+    });
+};
+```
+
+#### 4. Stale Closure with Refs
+
+```typescript
+// BAD - Trying to access state in callback
+const useTelemetry = ({ robotId }) => {
+    const [connected, setConnected] = useState(false);
+    
+    const connect = useCallback(() => {
+        const ws = new WebSocket(url);
+        
+        ws.onopen = () => {
+            // connected might be stale
+            if (connected) { // ❌ Might be false even if we just set it
+                console.log('Already connected');
+            }
+            setConnected(true);
+        };
+    }, []); // Missing 'connected' - but we don't want to recreate on every change
+    
+    // GOOD - Use ref for values that don't need to trigger re-renders
+    const connectedRef = useRef(false);
+    
+    const connect = useCallback(() => {
+        const ws = new WebSocket(url);
+        
+        ws.onopen = () => {
+            // connectedRef.current always has latest value
+            if (connectedRef.current) {
+                console.log('Already connected');
+            }
+            connectedRef.current = true;
+            setConnected(true); // Update state for UI
+        };
+    }, []); // No stale closure - ref always has latest value
+};
+```
+
+**How to Identify Stale Closures:**
+
+1. **ESLint Warning**: React Hook useEffect/useCallback has missing dependencies
+2. **Unexpected Behavior**: Function uses old values instead of current ones
+3. **State Not Updating**: Updates seem to be ignored
+4. **Console Logs Show Old Values**: Logging shows outdated state
+
+**Solutions:**
+
+1. **Include All Dependencies**: Add all referenced variables to dependency array
+   ```typescript
+   useEffect(() => {
+       // Uses: robots, filter, sortBy
+   }, [robots, filter, sortBy]); // Include all
+   ```
+
+2. **Use Functional Updates**: For state setters, use functional form
+   ```typescript
+   setCount(prevCount => prevCount + 1); // Always has latest value
+   ```
+
+3. **Use Refs for Values**: For values that don't need to trigger re-renders
+   ```typescript
+   const valueRef = useRef(value);
+   valueRef.current = value; // Always update ref
+   // Use valueRef.current in closures
+   ```
+
+4. **Extract to useCallback**: If function is used in multiple places
+   ```typescript
+   const handler = useCallback(() => {
+       // logic
+   }, [dependencies]);
+   ```
+
+**Interview Talking Points:**
+
+- **"A stale closure is when a function captures old values from an outer scope instead of current ones"**
+- **"Common in `useEffect`, `useCallback`, and `useMemo` when dependencies are missing"**
+- **"Fix by including all dependencies, using functional updates, or using refs for values that don't need re-renders"**
+- **"ESLint's exhaustive-deps rule helps catch stale closures"**
+- **"In `useTelemetry`, we use refs to avoid stale closures while keeping dependency arrays minimal"**
+
 ---
 
 ## State Management
